@@ -26,7 +26,8 @@ namespace parse {
 PFFile::PFFile(const QString& filepath)
 {
 	// Set the ivars
-	QFile file(filepath);
+	_filepath = filepath;
+	QFile file(_filepath);
 	file.open(QIODevice::ReadOnly);
 	_data = QSharedPointer<QByteArray>(new QByteArray());
 	_data->append(file.readAll());
