@@ -102,7 +102,7 @@ void PFManager::handleSignUpReply(QNetworkReply* networkReply)
 		currentUser->_objectId = jsonObject["objectId"].toString();
 		currentUser->_sessionToken = jsonObject["sessionToken"].toString();
 		QString createdAt = jsonObject["createdAt"].toString();
-		currentUser->_createdAt = PFDateTimePtr(new PFDateTime(createdAt));
+		currentUser->_createdAt = PFDateTime::fromParseString(createdAt);
 		emit signUpCompleted(true, PFErrorPtr());
 	}
 	else // FAILURE
@@ -136,9 +136,9 @@ void PFManager::handleLogInReply(QNetworkReply* networkReply)
 		currentUser->_objectId = jsonObject["objectId"].toString();
 		currentUser->_sessionToken = jsonObject["sessionToken"].toString();
 		QString createdAt = jsonObject["createdAt"].toString();
-		currentUser->_createdAt = PFDateTimePtr(new PFDateTime(createdAt));
+		currentUser->_createdAt = PFDateTime::fromParseString(createdAt);
 		QString updatedAt = jsonObject["updatedAt"].toString();
-		currentUser->_updatedAt = PFDateTimePtr(new PFDateTime(updatedAt));
+		currentUser->_updatedAt = PFDateTime::fromParseString(updatedAt);
 		emit logInCompleted(true, PFErrorPtr());
 	}
 	else // FAILURE

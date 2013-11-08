@@ -32,8 +32,8 @@ PFUser::PFUser() :
 	_password(""),
 	_objectId(""),
 	_sessionToken(""),
-	_createdAt(NULL),
-	_updatedAt(NULL)
+	_createdAt(),
+	_updatedAt()
 {
 	// No-op
 }

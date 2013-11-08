@@ -14,15 +14,14 @@ namespace parse {
 // Static Globals
 static QString gParseDateFormat = "yyyy-MM-ddTHH:mm:ss.zzzZ";
 
-PFDateTime::PFDateTime(const QDateTime& localTime)
+PFDateTime::PFDateTime() : QDateTime()
 {
-	_dateTime = localTime.toUTC();
+	// No-op
 }
 
-PFDateTime::PFDateTime(const QString& parseString)
+PFDateTime::PFDateTime(const QDateTime& dateTime) : QDateTime(dateTime)
 {
-	_dateTime = QDateTime::fromString(parseString, gParseDateFormat);
-	_dateTime.setTimeSpec(Qt::UTC);
+	// No-op
 }
 
 PFDateTime::~PFDateTime()
@@ -30,19 +29,21 @@ PFDateTime::~PFDateTime()
 	// No-op
 }
 
+PFDateTime PFDateTime::fromParseString(const QString& parseString)
+{
+	PFDateTime dateTime = QDateTime::fromString(parseString, gParseDateFormat);
+	dateTime.setTimeSpec(Qt::UTC);
+
+	return dateTime;
+}
+
 QString PFDateTime::toParseString()
 {
-	return _dateTime.toString(gParseDateFormat);
-}
+	// Make sure time spec is utf
+	if (timeSpec() != Qt::UTC)
+		setTimeSpec(Qt::UTC);
 
-QDateTime PFDateTime::toLocalTime()
-{
-	return _dateTime.toLocalTime();
-}
-
-QDateTime PFDateTime::toUTC()
-{
-	return _dateTime;
+	return toString(gParseDateFormat);
 }
 
 }	// End of parse namespace

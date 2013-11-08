@@ -65,8 +65,8 @@ protected:
 	QString						_password;
 	QString						_objectId;
 	QString						_sessionToken;
-	PFDateTimePtr				_createdAt;
-	PFDateTimePtr				_updatedAt;
+	PFDateTime					_createdAt;
+	PFDateTime					_updatedAt;
 };
 
 }	// End of parse namespace
