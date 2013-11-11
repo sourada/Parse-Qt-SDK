@@ -7,6 +7,7 @@
 //
 
 // Qt headers
+#include <QEventLoop>
 #include <QFileInfo>
 #include <QHttpMultiPart>
 #include <QHttpPart>
@@ -68,11 +69,44 @@ PFFile::~PFFile()
 	// No-op
 }
 
+QVariant PFFile::variantWithFile(const PFFilePtr& file)
+{
+	QVariant variant;
+	variant.setValue(file);
+	return variant;
+}
+
 #pragma mark - Public User API Methods
 
 bool PFFile::isDirty()
 {
 	return _isDirty;
+}
+
+bool PFFile::save()
+{
+	// Create a network request
+	QFileInfo fileInfo(_filepath);
+	QString filename = fileInfo.fileName();
+	QUrl url = QUrl(QString("https://api.parse.com/1/files/") + filename);
+	QNetworkRequest request(url);
+	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::instance()->applicationId().toUtf8());
+	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::instance()->restApiKey().toUtf8());
+	request.setRawHeader(QString("Content-Type").toUtf8(), _mimeType.toUtf8());
+
+	// Execute the request and connect the callbacks
+	QNetworkAccessManager* networkAccessManager = PFManager::instance()->networkAccessManager();
+	QNetworkReply *reply = networkAccessManager->post(request, *(_data.data()));
+
+	QEventLoop eventLoop;
+	QObject::connect(reply, SIGNAL(finished()), &eventLoop, SLOT(quit()));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+
+//	QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+	qDebug() << "PFFile save reply:" << reply->readAll() << " error:" << (reply->error() == QNetworkReply::NoError);
+	qDebug() << "reply error type:" << reply->errorString();
+
+	return true;
 }
 
 bool PFFile::saveInBackground(QObject *saveProgressTarget, const char *saveProgressAction, QObject *saveCompleteTarget, const char *saveCompleteAction)
@@ -225,6 +259,25 @@ const QString& PFFile::name()
 const QString& PFFile::url()
 {
 	return _url;
+}
+
+#pragma mark - Backend API - PFSerializable Methods
+
+void PFFile::fromJson(const QJsonObject& jsonObject)
+{
+	qDebug() << "PFFile::fromJson";
+	_name = jsonObject["name"].toString();
+	_url = jsonObject["url"].toString();
+}
+
+void PFFile::toJson(QJsonObject& jsonObject)
+{
+	qDebug() << "PFFile::toJson";
+	if (_name.isEmpty())
+		qFatal("PFFile::toJson could NOT convert to PFFile to JSON because the name is not set");
+	jsonObject["__type"] = QString("File");
+	jsonObject["name"] = _name;
+	jsonObject["url"] = _url;
 }
 
 #pragma mark - Protected Save Slots

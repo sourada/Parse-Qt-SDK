@@ -6,17 +6,19 @@
 //  Copyright (c) 2013 BodyViz. All rights reserved.
 //
 
+// Parse headers
+#include <Parse/PFACL.h>
+#include <Parse/PFDateTime.h>
+#include <Parse/PFFile.h>
+#include <Parse/PFManager.h>
+#include <Parse/PFUser.h>
+
 // Qt headers
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMutex>
 #include <QMutexLocker>
 #include <QNetworkReply>
-
-// Parse headers
-#include <Parse/PFDateTime.h>
-#include <Parse/PFManager.h>
-#include <Parse/PFUser.h>
 
 namespace parse {
 
@@ -179,8 +181,13 @@ void PFManager::handleRequestPasswordResetReply(QNetworkReply* networkReply)
 
 void PFManager::registerMetaTypesForSignalSlots()
 {
+	qDebug() << "PFManager::Registered Meta Types";
+
 	// Register the typedefs for signals and slots
+	qRegisterMetaType<parse::PFACLPtr>("PFACLPtr");
+	qRegisterMetaType<parse::PFDateTime>("PFDateTime");
 	qRegisterMetaType<parse::PFErrorPtr>("PFErrorPtr");
+	qRegisterMetaType<parse::PFFilePtr>("PFFilePtr");
 	qRegisterMetaType<parse::PFUserPtr>("PFUserPtr");
 }
 

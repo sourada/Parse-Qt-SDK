@@ -11,6 +11,7 @@
 
 // Parse headers
 #include <Parse/PFError.h>
+#include <Parse/PFSerializable.h>
 
 // Qt headers
 #include <QFile>
@@ -42,7 +43,7 @@ typedef QSharedPointer<PFFile> PFFilePtr;
  *    2. User may want to cacnel a download
  */
 
-class PFFile : public QObject
+class PFFile : public QObject, public PFSerializable
 {
 	Q_OBJECT
 
@@ -67,11 +68,16 @@ public:
 	/** Destructor. */
 	~PFFile();
 
+	/** Helper method for creating a QVariant with a PFFilePtr object. */
+	static QVariant variantWithFile(const PFFilePtr& file);
+
 	/**
 	 * Returns whether the data has been saved to the server.
 	 * @return True if the data has been saved to the server, false otherwise.
 	 */
 	bool isDirty();
+
+	bool save();
 
 	/**
 	 * Saves the data asynchronously to the server.
@@ -124,6 +130,10 @@ public:
 	//                                BACKEND API
 	//=================================================================================
 
+	// PFSerializable Methods
+	void fromJson(const QJsonObject& jsonObject);
+	void toJson(QJsonObject& jsonObject);
+
 protected slots:
 
 	// Save Slots
@@ -164,5 +174,7 @@ protected:
 };
 
 }	// End of parse namespace
+
+Q_DECLARE_METATYPE(parse::PFFilePtr)
 
 #endif	// End of PARSE_PFFILE_H

@@ -7,14 +7,18 @@
 //
 
 // Parse headers
+#include <Parse/PFDateTime.h>
+#include <Parse/PFFile.h>
 #include <Parse/PFManager.h>
 #include <Parse/PFObject.h>
+#include <Parse/PFUser.h>
 
 // Qt headers
 #include <QEventLoop>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QVariant>
 
 namespace parse {
 
@@ -24,6 +28,27 @@ PFObject::PFObject(const QString& className)
 {
 	initialize();
 	_parseClassName = className;
+
+	// Add the default acl if set
+	PFACLPtr defaultACL;
+	bool currentUserAccess;
+	PFACL::defaultACLWithCurrentUserAccess(defaultACL, currentUserAccess);
+	if (!defaultACL.isNull())
+	{
+		// Modify the default acl if the current user access is set
+		if (currentUserAccess)
+		{
+			PFUserPtr currentUser = PFUser::currentUser();
+			if (!currentUser.isNull())
+			{
+				defaultACL = defaultACL->clone();
+				defaultACL->setReadAccessForUser(true, currentUser);
+				defaultACL->setWriteAccessForUser(true, currentUser);
+			}
+		}
+
+		setACL(defaultACL);
+	}
 }
 
 PFObject::PFObject(const QString& className, const QString& objectId)
@@ -37,6 +62,7 @@ void PFObject::initialize()
 {
 	_parseClassName = "";
 	_objectId = "";
+	_acl = PFACLPtr();
 	_createdAt = PFDateTime();
 	_updatedAt = PFDateTime();
 	_primitiveObjects = QVariantMap();
@@ -61,6 +87,15 @@ PFObjectPtr PFObject::objectWithClassName(const QString& className, const QStrin
 	return PFObjectPtr(new PFObject(className, objectId));
 }
 
+QVariant PFObject::variantWithObject(PFObjectPtr object)
+{
+	QVariant variant;
+	variant.setValue(object);
+	return variant;
+}
+
+#pragma mark - User API Methods
+
 void PFObject::setObjectForKey(const QVariant& object, const QString& key)
 {
 	_primitiveObjects[key] = object;
@@ -76,6 +111,17 @@ const QVariant& PFObject::objectForKey(const QString& key)
 QList<QString> PFObject::allKeys()
 {
 	return _primitiveObjects.keys();
+}
+
+void PFObject::setACL(PFACLPtr acl)
+{
+	_acl = acl;
+	setObjectForKey(PFACL::variantWithACL(acl), "ACL");
+}
+
+PFACLPtr PFObject::ACL()
+{
+	return _acl;
 }
 
 bool PFObject::save()
@@ -157,6 +203,26 @@ bool PFObject::saveInBackground(QObject *saveCompleteTarget, const char *saveCom
 	return true;
 }
 
+#pragma mark - Backend API - PFSerializable Methods
+
+void PFObject::fromJson(const QJsonObject& jsonObject)
+{
+	Q_UNUSED(jsonObject);
+	qDebug() << "PFFile::fromJSON NOT implemented!!!";
+}
+
+void PFObject::toJson(QJsonObject& jsonObject)
+{
+	qDebug() << "PFObject::toJson";
+	if (_objectId.isEmpty())
+		qFatal("PFObject::toJson could NOT convert to PFObject to JSON because the _objectId is not set");
+	jsonObject["__type"] = QString("Pointer");
+	jsonObject["className"] = _parseClassName;
+	jsonObject["objectId"] = _objectId;
+}
+
+#pragma mark - Protected Save Slots
+
 void PFObject::handleSaveCompleted()
 {
 	// Handle the reply
@@ -177,6 +243,8 @@ void PFObject::handleSaveCompleted()
 	// Clean up
 	_saveReply->deleteLater();
 }
+
+#pragma mark - Protected Methods
 
 bool PFObject::needsUpdated()
 {
@@ -202,16 +270,102 @@ QNetworkRequest PFObject::buildSaveNetworkRequest()
 
 QByteArray PFObject::buildSaveData()
 {
-	// Convert the primitives to json
-	QJsonObject jsonObject;
+	// Iterate through all the primitives and build the data from them
+	QVariantMap objectsToSerialize;
 	if (!needsUpdated())
-		jsonObject = QJsonObject::fromVariantMap(_primitiveObjects);
+		objectsToSerialize = _primitiveObjects;
 	else
-		jsonObject = QJsonObject::fromVariantMap(_updatedPrimitiveObjects);
+		objectsToSerialize = _updatedPrimitiveObjects;
+
+	// Serialize all the objects into json
+	QJsonObject jsonObject;
+	foreach (const QString& key, objectsToSerialize.keys())
+	{
+		QVariant objectToSerialize = objectsToSerialize[key];
+		jsonObject[key] = convertDataToJson(objectToSerialize);
+	}
 	QByteArray data = QJsonDocument(jsonObject).toJson(QJsonDocument::Compact);
 	qDebug() << "Data: " << data;
 
 	return data;
+}
+
+QJsonValue PFObject::convertDataToJson(const QVariant& data)
+{
+	if ((QMetaType::Type) data.type() == QMetaType::QVariantList)
+	{
+		QJsonArray jsonArray;
+		foreach (const QVariant& dataObject, data.toList())
+		{
+			QJsonValue jsonValue = convertDataToJson(dataObject);
+			jsonArray.append(jsonValue);
+		}
+
+		return QJsonValue(jsonArray);
+	}
+	else if ((QMetaType::Type) data.type() == QMetaType::QVariantMap)
+	{
+		QJsonObject jsonObject;
+		QVariantMap dataMap;
+		foreach (const QString& key, dataMap.keys())
+		{
+			QVariant dataObject = dataMap[key];
+			jsonObject[key] = convertDataToJson(dataObject);
+		}
+
+		return QJsonValue(jsonObject);
+	}
+	else if ((QMetaType::Type) data.type() == QMetaType::QVariantHash)
+	{
+		QJsonObject jsonObject;
+		QVariantHash dataHash;
+		foreach (const QString& key, dataHash.keys())
+		{
+			QVariant dataObject = dataHash[key];
+			jsonObject[key] = convertDataToJson(dataObject);
+		}
+
+		return QJsonValue(jsonObject);
+	}
+	else if (data.canConvert<PFACLPtr>())	// PFACLPtr
+	{
+		PFACLPtr acl = data.value<PFACLPtr>();
+		QJsonObject jsonObject;
+		acl->toJson(jsonObject);
+		return QJsonValue(jsonObject);
+	}
+	else if (data.canConvert<PFDateTime>())	// PFDateTime
+	{
+		PFDateTime dateTime = data.value<PFDateTime>();
+		QJsonObject jsonObject;
+		dateTime.toJson(jsonObject);
+		return QJsonValue(jsonObject);
+	}
+	else if (data.canConvert<PFFilePtr>())	// PFFilePtr
+	{
+		PFFilePtr file = data.value<PFFilePtr>();
+		QJsonObject jsonObject;
+		file->toJson(jsonObject);
+		return QJsonValue(jsonObject);
+	}
+	else if (data.canConvert<PFObjectPtr>())	// PFObjectPtr
+	{
+		PFObjectPtr object = data.value<PFObjectPtr>();
+		QJsonObject jsonObject;
+		object->toJson(jsonObject);
+		return QJsonValue(jsonObject);
+	}
+	else if (data.canConvert<PFUserPtr>())	// PFUserPtr
+	{
+		PFUserPtr user = data.value<PFUserPtr>();
+		QJsonObject jsonObject;
+		user->toJson(jsonObject);
+		return QJsonValue(jsonObject);
+	}
+	else
+	{
+		return QJsonValue::fromVariant(data);
+	}
 }
 
 PFErrorPtr PFObject::parseSaveNetworkReply(QNetworkReply* networkReply, bool updated)
@@ -243,6 +397,7 @@ PFErrorPtr PFObject::parseSaveNetworkReply(QNetworkReply* networkReply, bool upd
 	{
 		int errorCode = jsonObject["code"].toInt();
 		QString errorMessage = jsonObject["error"].toString();
+		qDebug() << "Save error:" << errorCode << ":" << errorMessage;
 		return PFErrorPtr(new PFError(errorCode, errorMessage));
 	}
 }

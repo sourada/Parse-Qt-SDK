@@ -10,8 +10,10 @@
 #define PARSE_PFOBJECT_H
 
 // Parse headers
+#include <Parse/PFACL.h>
 #include <Parse/PFDateTime.h>
 #include <Parse/PFError.h>
+#include <Parse/PFSerializable.h>
 
 // Qt headers
 #include <QHash>
@@ -23,7 +25,7 @@ namespace parse {
 class PFObject;
 typedef QSharedPointer<PFObject> PFObjectPtr;
 
-class PFObject : public QObject
+class PFObject : public QObject, public PFSerializable
 {
 	Q_OBJECT
 
@@ -40,10 +42,17 @@ public:
 	static PFObjectPtr objectWithClassName(const QString& className);
 	static PFObjectPtr objectWithClassName(const QString& className, const QString& objectId);
 
+	// Variant helper
+	static QVariant variantWithObject(PFObjectPtr object);
+
 	// Primitives
 	void setObjectForKey(const QVariant& object, const QString& key);
 	const QVariant& objectForKey(const QString& key);
 	QList<QString> allKeys();
+
+	// ACL Accessors
+	void setACL(PFACLPtr acl);
+	PFACLPtr ACL();
 
 	// Accessors
 	inline const QString& parseClassName() { return _parseClassName; }
@@ -59,6 +68,10 @@ public:
 	//=================================================================================
 	//                                BACKEND API
 	//=================================================================================
+
+	// PFSerializable Methods
+	void fromJson(const QJsonObject& jsonObject);
+	void toJson(QJsonObject& jsonObject);
 
 protected slots:
 
@@ -83,11 +96,13 @@ protected:
 	bool needsUpdated();
 	QNetworkRequest buildSaveNetworkRequest();
 	QByteArray buildSaveData();
+	QJsonValue convertDataToJson(const QVariant& data); // Recursive
 	PFErrorPtr parseSaveNetworkReply(QNetworkReply* networkReply, bool updated);
 
 	/** Instance members. */
 	QString				_parseClassName;
 	QString				_objectId;
+	PFACLPtr			_acl;
 	PFDateTime			_createdAt;
 	PFDateTime			_updatedAt;
 	QVariantMap			_primitiveObjects;
@@ -97,5 +112,7 @@ protected:
 };
 
 }	// End of parse namespace
+
+Q_DECLARE_METATYPE(parse::PFObjectPtr)
 
 #endif	// End of PARSE_PFOBJECT_H

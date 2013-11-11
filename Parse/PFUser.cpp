@@ -11,6 +11,7 @@
 #include <Parse/PFUser.h>
 
 // Qt headers
+#include <QEventLoop>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -56,6 +57,13 @@ PFUserPtr PFUser::user()
 	return gCurrentUser;
 }
 
+QVariant PFUser::variantWithUser(const PFUserPtr& user)
+{
+	QVariant variant;
+	variant.setValue(user);
+	return variant;
+}
+
 void PFUser::signUpInBackground(QObject* target, const char* action)
 {
 	QMutexLocker locker(&gMutex);
@@ -78,6 +86,57 @@ void PFUser::signUpInBackground(QObject* target, const char* action)
 	networkAccessManager->post(request, data);
 	QObject::connect(networkAccessManager, SIGNAL(finished(QNetworkReply*)), PFManager::instance(), SLOT(handleSignUpReply(QNetworkReply*)));
 	QObject::connect(PFManager::instance(), SIGNAL(signUpCompleted(bool, PFErrorPtr)), target, action);
+}
+
+PFUserPtr PFUser::logInWithUsernameAndPassword(const QString& username, const QString& password)
+{
+	QMutexLocker locker(&gMutex);
+
+	// Make sure we're logged out
+	if (!gCurrentUser.isNull())
+		gCurrentUser = PFUserPtr();
+
+	// Create the url string
+	QUrlQuery urlQuery = QUrlQuery("https://api.parse.com/1/login?");
+	urlQuery.addQueryItem("username", username);
+	urlQuery.addQueryItem("password", password);
+	QUrl url = QUrl(urlQuery.query());
+
+	// Create a network request
+	QNetworkRequest request(url);
+	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::instance()->applicationId().toUtf8());
+	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::instance()->restApiKey().toUtf8());
+
+	// Execute the request and connect the callbacks
+	QNetworkAccessManager* networkAccessManager = PFManager::instance()->networkAccessManager();
+	QNetworkReply* reply = networkAccessManager->get(request);
+
+	// Block the async nature of the request using our own event loop until the reply finishes
+	QEventLoop eventLoop;
+	QObject::connect(reply, SIGNAL(finished()), &eventLoop, SLOT(quit()));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+
+	// Parse the json reply
+	QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+	QJsonObject jsonObject = doc.object();
+	qDebug() << "Log In Response:" << doc;
+
+	// Notify the target of the success or failure
+	if (reply->error() == QNetworkReply::NoError) // SUCCESS
+	{
+		// Create a new user
+		gCurrentUser = PFUserPtr(new PFUser());
+		gCurrentUser->_username = jsonObject["username"].toString();
+		gCurrentUser->_email = jsonObject["email"].toString();
+		gCurrentUser->_objectId = jsonObject["objectId"].toString();
+		gCurrentUser->_sessionToken = jsonObject["sessionToken"].toString();
+		QString createdAt = jsonObject["createdAt"].toString();
+		gCurrentUser->_createdAt = PFDateTime::fromParseString(createdAt);
+		QString updatedAt = jsonObject["updatedAt"].toString();
+		gCurrentUser->_updatedAt = PFDateTime::fromParseString(updatedAt);
+	}
+
+	return gCurrentUser;
 }
 
 void PFUser::logInWithUsernameAndPasswordInBackground(const QString& username, const QString& password, QObject* target, const char* action)
@@ -164,6 +223,34 @@ const QString& PFUser::email()
 const QString& PFUser::password()
 {
 	return _password;
+}
+
+const QString& PFUser::objectId()
+{
+	return _objectId;
+}
+
+const QString& PFUser::sessionToken()
+{
+	return _sessionToken;
+}
+
+#pragma mark - Backend API - PFSerializable Methods
+
+void PFUser::fromJson(const QJsonObject& jsonObject)
+{
+	qDebug() << "PFUser::fromJson";
+	_objectId = jsonObject["objectId"].toString();
+}
+
+void PFUser::toJson(QJsonObject& jsonObject)
+{
+	qDebug() << "PFUser::toJson";
+	if (_objectId.isEmpty())
+		qFatal("PFFile::toJson could NOT convert to PFUser to JSON because the objectId is not set");
+	jsonObject["__type"] = QString("Pointer");
+	jsonObject["className"] = QString("_User");
+	jsonObject["objectId"] = _objectId;
 }
 
 }	// End of parse namespace

@@ -12,6 +12,7 @@
 // Parse headers
 #include <Parse/PFDateTime.h>
 #include <Parse/PFError.h>
+#include <Parse/PFSerializable.h>
 
 // Qt headers
 #include <QDateTime>
@@ -26,16 +27,26 @@ namespace parse {
 class PFUser;
 typedef QSharedPointer<PFUser> PFUserPtr;
 
-class PFUser
+class PFUser : public PFSerializable
 {
 public:
+
+	//=================================================================================
+	//                                  USER API
+	//=================================================================================
 
 	static PFUserPtr currentUser();
 	static PFUserPtr user();
 
+	/** Helper method for creating a QVariant with a PFUserPtr object. */
+	static QVariant variantWithUser(const PFUserPtr& user);
+
 	static void signUpInBackground(QObject* target, const char* action);
+
+	static PFUserPtr logInWithUsernameAndPassword(const QString& username, const QString& password);
 	static void logInWithUsernameAndPasswordInBackground(const QString& username, const QString& password, QObject* target, const char* action);
 	static void logOut();
+
 	static void requestPasswordResetForEmailInBackground(const QString& email, QObject* target, const char* action);
 
 	bool isAuthenticated();
@@ -47,9 +58,19 @@ public:
 	const QString& username();
 	const QString& email();
 	const QString& password();
+	const QString& objectId();
+	const QString& sessionToken();
 
 	/** Destructor. */
-	~PFUser();
+	virtual ~PFUser();
+
+	//=================================================================================
+	//                                BACKEND API
+	//=================================================================================
+
+	// PFSerializable Methods
+	void fromJson(const QJsonObject& jsonObject);
+	void toJson(QJsonObject& jsonObject);
 
 	/** Declare the PFManager to be a friend class. */
 	friend class PFManager;
@@ -70,5 +91,7 @@ protected:
 };
 
 }	// End of parse namespace
+
+Q_DECLARE_METATYPE(parse::PFUserPtr)
 
 #endif	// End of PARSE_PFUSER_H
