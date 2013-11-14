@@ -1,0 +1,8 @@
+.DS_Store
+
+# Test suite
+ParseTestSuite/Debug
+ParseTestSuite/Release
+ParseTestSuite/moc
+ParseTestSuite/*.build
+ParseTestSuite/*.xcodeproj
