@@ -6,24 +6,19 @@
 //  Copyright (c) 2013 BodyViz. All rights reserved.
 //
 
+#include <iostream>
+
 // Parse headers
-#include <Parse/PFACL.h>
-#include <Parse/PFDateTime.h>
-#include <Parse/PFFile.h>
-#include <Parse/PFManager.h>
-#include <Parse/PFUser.h>
+#include "PFManager.h"
 
 // Qt headers
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QMutex>
 #include <QMutexLocker>
-#include <QNetworkReply>
 
 namespace parse {
 
 // Static Globals
-static QMutex	gPFManagerMutex;
+static QMutex gPFManagerMutex;
 
 #pragma mark - Memory Management Methods
 
@@ -37,9 +32,7 @@ PFManager::PFManager() :
 	_cacheDirectory = QDir::temp();
 	_cacheDirectory.mkdir("Parse");
 	_cacheDirectory.cd("Parse");
-
-	// Register the Parse metatypes
-	registerMetaTypesForSignalSlots();
+	qDebug() << "Cache directory:" << _cacheDirectory.absolutePath();
 }
 
 PFManager::~PFManager()
@@ -47,7 +40,9 @@ PFManager::~PFManager()
 	// No-op
 }
 
-PFManager* PFManager::instance()
+#pragma mark - Creation Methods
+
+PFManager* PFManager::sharedManager()
 {
 	QMutexLocker lock(&gPFManagerMutex);
 	static PFManager manager;
@@ -72,16 +67,11 @@ const QString& PFManager::restApiKey()
 	return _restApiKey;
 }
 
-#pragma mark - Backend API - Public Methods
+#pragma mark - Backend API - Caching and Network Methods
 
 QNetworkAccessManager* PFManager::networkAccessManager()
 {
 	return &_networkAccessManager;
-}
-
-QDir& PFManager::cacheDirectory()
-{
-	return _cacheDirectory;
 }
 
 void PFManager::setCacheDirectory(const QDir& cacheDirectory)
@@ -89,106 +79,15 @@ void PFManager::setCacheDirectory(const QDir& cacheDirectory)
 	_cacheDirectory = cacheDirectory;
 }
 
-#pragma mark - Backend API - PFUser Network Replies
-
-void PFManager::handleSignUpReply(QNetworkReply* networkReply)
+QDir& PFManager::cacheDirectory()
 {
-	// Parse the json reply
-	QJsonDocument doc = QJsonDocument::fromJson(networkReply->readAll());
-	QJsonObject jsonObject = doc.object();
-
-	// Notify the target of the success or failure
-	if (networkReply->error() == QNetworkReply::NoError) // SUCCESS
-	{
-		PFUserPtr currentUser = PFUser::currentUser();
-		currentUser->_objectId = jsonObject["objectId"].toString();
-		currentUser->_sessionToken = jsonObject["sessionToken"].toString();
-		QString createdAt = jsonObject["createdAt"].toString();
-		currentUser->_createdAt = PFDateTime::fromParseString(createdAt);
-		emit signUpCompleted(true, PFErrorPtr());
-	}
-	else // FAILURE
-	{
-		int errorCode = jsonObject["code"].toInt();
-		QString errorMessage = jsonObject["error"].toString();
-		emit signUpCompleted(false, PFErrorPtr(new PFError(errorCode, errorMessage)));
-	}
-
-	// Clean up
-	networkReply->deleteLater();
+	return _cacheDirectory;
 }
 
-void PFManager::handleLogInReply(QNetworkReply* networkReply)
+void PFManager::clearCache()
 {
-	// Parse the json reply
-	QJsonDocument doc = QJsonDocument::fromJson(networkReply->readAll());
-	QJsonObject jsonObject = doc.object();
-
-	// Notify the target of the success or failure
-	if (networkReply->error() == QNetworkReply::NoError) // SUCCESS
-	{
-		// If we're already logged in, then log out and then create a new user
-		if (!PFUser::currentUser().isNull())
-			PFUser::logOut();
-
-		// Create a new user
-		PFUserPtr currentUser = PFUser::user();
-		currentUser->_username = jsonObject["username"].toString();
-		currentUser->_email = jsonObject["email"].toString();
-		currentUser->_objectId = jsonObject["objectId"].toString();
-		currentUser->_sessionToken = jsonObject["sessionToken"].toString();
-		QString createdAt = jsonObject["createdAt"].toString();
-		currentUser->_createdAt = PFDateTime::fromParseString(createdAt);
-		QString updatedAt = jsonObject["updatedAt"].toString();
-		currentUser->_updatedAt = PFDateTime::fromParseString(updatedAt);
-		emit logInCompleted(true, PFErrorPtr());
-	}
-	else // FAILURE
-	{
-		int errorCode = jsonObject["code"].toInt();
-		QString errorMessage = jsonObject["error"].toString();
-		emit logInCompleted(false, PFErrorPtr(new PFError(errorCode, errorMessage)));
-	}
-
-	// Clean up
-	networkReply->deleteLater();
-}
-
-void PFManager::handleRequestPasswordResetReply(QNetworkReply* networkReply)
-{
-	// Parse the json reply
-	QJsonDocument doc = QJsonDocument::fromJson(networkReply->readAll());
-	QJsonObject jsonObject = doc.object();
-
-	// Notify the target of the success or failure
-	if (networkReply->error() == QNetworkReply::NoError) // SUCCESS
-	{
-		// Successful reply has no payload
-		emit requestPasswordResetCompleted(true, PFErrorPtr());
-	}
-	else // FAILURE
-	{
-		int errorCode = jsonObject["code"].toInt();
-		QString errorMessage = jsonObject["error"].toString();
-		emit requestPasswordResetCompleted(false, PFErrorPtr(new PFError(errorCode, errorMessage)));
-	}
-
-	// Clean up
-	networkReply->deleteLater();
-}
-
-#pragma mark - Protected Methods
-
-void PFManager::registerMetaTypesForSignalSlots()
-{
-	qDebug() << "PFManager::Registered Meta Types";
-
-	// Register the typedefs for signals and slots
-	qRegisterMetaType<parse::PFACLPtr>("PFACLPtr");
-	qRegisterMetaType<parse::PFDateTime>("PFDateTime");
-	qRegisterMetaType<parse::PFErrorPtr>("PFErrorPtr");
-	qRegisterMetaType<parse::PFFilePtr>("PFFilePtr");
-	qRegisterMetaType<parse::PFUserPtr>("PFUserPtr");
+	_cacheDirectory.removeRecursively();
+	_cacheDirectory.mkpath(_cacheDirectory.absolutePath());
 }
 
 }	// End of parse namespace

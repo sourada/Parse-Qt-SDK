@@ -10,41 +10,35 @@
 #define PARSE_PFACL_H
 
 // Parse headers
-#include "PFUser.h"
+#include "PFSerializable.h"
 
 // Qt headers
 #include <QObject>
 
 namespace parse {
 
-// Typedefs
-class PFACL;
-typedef QSharedPointer<PFACL> PFACLPtr;
-
-/**
- * It is important to note that the properties will not store a false value. Instead
- * the key is removed from the properties. The Parse REST API does not allow false
- * values to be passed for the ACL. For more details please refer to the implementation.
- */
-class PFACL : public QObject
+// It is important to note that the properties will not store a false value. Instead
+// the key is removed from the properties. The Parse REST API does not allow false
+// values to be passed for the ACL. For more details please refer to the implementation.
+class PFACL : public PFSerializable
 {
+	Q_OBJECT
+
 public:
 
 	//=================================================================================
 	//                                  USER API
 	//=================================================================================
 
-	/** Creates an ACL with no permissions granted. */
+	// Creates an ACL with no permissions granted
 	static PFACLPtr ACL();
+	static PFACLPtr ACLFromVariant(const QVariant& variant);
 
-	/** Creates an ACL where only the provided user has access. */
+	// Creates an ACL where only the provided user has access
 	static PFACLPtr ACLWithUser(PFUserPtr user);
 
-	/** Sets a default ACL that will be applied to all PFObjects when they are created. */
+	// Sets a default ACL that will be applied to all PFObjects when they are created
 	static void setDefaultACLWithAccessForCurrentUser(PFACLPtr defaultACL, bool currentUserAccess);
-
-	/** Helper method for creating a QVariant with a PFACLPtr object. */
-	static QVariant variantWithACL(const PFACLPtr& acl);
 
 	// Public Access Methods
 	void setPublicReadAccess(bool allowed);
@@ -59,8 +53,8 @@ public:
 	bool writeAccessForUserId(const QString& userId);
 
 	// Explicit Per-User Access Methods (does not consider the public read/write access)
-	void setReadAccessForUser(bool allowed, PFUserPtr user);
-	void setWriteAccessForUser(bool allowed, PFUserPtr user);
+	bool setReadAccessForUser(bool allowed, PFUserPtr user);
+	bool setWriteAccessForUser(bool allowed, PFUserPtr user);
 	bool readAccessForUser(PFUserPtr user);
 	bool writeAccessForUser(PFUserPtr user);
 
@@ -68,25 +62,24 @@ public:
 	//                                BACKEND API
 	//=================================================================================
 
-	/** Destructor. */
-	virtual ~PFACL();
-
 	// PFSerializable Methods
-	void fromJson(const QJsonObject& jsonObject);
-	void toJson(QJsonObject& jsonObject);
+	virtual PFSerializablePtr fromJson(const QJsonObject& jsonObject);
+	virtual bool toJson(QJsonObject& jsonObject);
+	virtual const QString className() const;
 
 protected:
 
-	/** Constructor. */
+	// Constructor / Destructor
 	PFACL();
+	virtual ~PFACL();
 
-	/** Direct access to the default acl properties for the PFObject class. */
+	// Direct access to the default acl properties for the PFObject class
 	friend class PFObject;
 	static void defaultACLWithCurrentUserAccess(PFACLPtr& defaultACL, bool& currentUserAccess);
 	PFACLPtr clone();
 
-	/** Instance members. */
-	QVariantMap		_properties;
+	// Instance members
+	QVariantMap _properties;
 };
 
 }	// End of parse namespace

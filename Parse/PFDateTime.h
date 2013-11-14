@@ -10,39 +10,55 @@
 #define PARSE_PFDATETIME_H
 
 // Parse headers
-#include <Parse/PFSerializable.h>
+#include "PFSerializable.h"
 
 // Qt headers
 #include <QDateTime>
-#include <QMetaType>
 
 namespace parse {
 
-class PFDateTime : public QDateTime, public PFSerializable
+class PFDateTime : public PFSerializable
 {
+	Q_OBJECT
+
 public:
 
-	// Construction / Destruction
-	PFDateTime();
+	//=================================================================================
+	//                                  USER API
+	//=================================================================================
+
+	// Creation Methods
+	static PFDateTimePtr dateTimeFromParseString(const QString& parseString);
+	static PFDateTimePtr dateTimeFromDateTime(const QDateTime& dateTime);
+	static PFDateTimePtr dateTimeFromVariant(const QVariant& variant);
+
+	// DateTime Access
+	QString toParseString() const;
+	const QDateTime& dateTime() const;
+
+	//=================================================================================
+	//                                BACKEND API
+	//=================================================================================
+
+	// PFSerializable Methods
+	virtual PFSerializablePtr fromJson(const QJsonObject& jsonObject);
+	virtual bool toJson(QJsonObject& jsonObject);
+	virtual const QString className() const;
+
+protected:
+
+	// Constructor / Destructor
 	PFDateTime(const QDateTime& dateTime);
 	virtual ~PFDateTime();
 
-	// Variant helper
-	static QVariant variantWithDateTime(const PFDateTime& dateTime);
-
-	// Conversion helpers to switch between Parse and Qt timestamps
-	static PFDateTime fromParseString(const QString& parseString);
-	QString toParseString() const;
-
-	// PFSerializable Methods
-	void fromJson(const QJsonObject& jsonObject);
-	void toJson(QJsonObject& jsonObject);
+	// Instance members
+	QDateTime _dateTime;
 };
 
 }	// End of parse namespace
 
-QDebug operator<<(QDebug dbg, const parse::PFDateTime& dateTime);
+QDebug operator<<(QDebug dbg, const parse::PFDateTimePtr& dateTime);
 
-Q_DECLARE_METATYPE(parse::PFDateTime)
+Q_DECLARE_METATYPE(parse::PFDateTimePtr)
 
 #endif	// End of PARSE_PFDATETIME_H

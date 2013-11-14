@@ -6,14 +6,8 @@
 //  Copyright (c) 2013 BodyViz. All rights reserved.
 //
 
-// C++ headers
-#include <assert.h>
-
 // Parse headers
 #include "PFDateTime.h"
-
-// Qt headers
-#include <QJsonObject>
 
 namespace parse {
 
@@ -22,86 +16,113 @@ static QString gParseDateFormat = "yyyy-MM-ddTHH:mm:ss.zzzZ";
 
 #pragma mark - Memory Management Methods
 
-PFDateTime::PFDateTime() : QDateTime()
+PFDateTime::PFDateTime(const QDateTime& dateTime) :
+	_dateTime(dateTime)
 {
-	// No-op
-}
-
-PFDateTime::PFDateTime(const QDateTime& dateTime) : QDateTime(dateTime)
-{
-	// No-op
+	qDebug().nospace() << "Created PFDateTime(" << QString().sprintf("%8p", this) << ")";
 }
 
 PFDateTime::~PFDateTime()
 {
-	// No-op
+	qDebug().nospace() << "Destroyed PFDateTime(" << QString().sprintf("%8p", this) << ")";
 }
 
-QVariant PFDateTime::variantWithDateTime(const PFDateTime& dateTime)
+#pragma mark - Static Creation Methods
+
+PFDateTimePtr PFDateTime::dateTimeFromParseString(const QString& parseString)
 {
-	QVariant variant;
-	variant.setValue(dateTime);
-	return variant;
+	QDateTime dateTime = QDateTime::fromString(parseString, gParseDateFormat);
+	if (!dateTime.isValid())
+	{
+		qWarning() << "PFDateTime::dateTimeFromParseString failed due to an invalid parse string" << parseString;
+		return PFDateTimePtr();
+	}
+	else
+	{
+		dateTime.setTimeSpec(Qt::UTC);
+		PFDateTimePtr pfDateTime = PFDateTimePtr(new PFDateTime(dateTime), &QObject::deleteLater);
+		return pfDateTime;
+	}
 }
 
-#pragma mark - Conversion Helpers
-
-PFDateTime PFDateTime::fromParseString(const QString& parseString)
+PFDateTimePtr PFDateTime::dateTimeFromDateTime(const QDateTime& dateTime)
 {
-	PFDateTime dateTime = QDateTime::fromString(parseString, gParseDateFormat);
-	dateTime.setTimeSpec(Qt::UTC);
-
-	return dateTime;
+	if (!dateTime.isValid())
+	{
+		qWarning("PFDateTime::dateTimeFromDateTime failed due to an invalid date time");
+		return PFDateTimePtr();
+	}
+	else
+	{
+		QDateTime nonConstDateTime = dateTime;
+		nonConstDateTime.setTimeSpec(Qt::UTC);
+		PFDateTimePtr pfDateTime = PFDateTimePtr(new PFDateTime(nonConstDateTime), &QObject::deleteLater);
+		return pfDateTime;
+	}
 }
+
+PFDateTimePtr PFDateTime::dateTimeFromVariant(const QVariant& variant)
+{
+	PFSerializablePtr serializable = PFSerializable::fromVariant(variant);
+	if (!serializable.isNull())
+		return serializable.objectCast<PFDateTime>();
+
+	return PFDateTimePtr();
+}
+
+#pragma mark - DateTime Access Methods
 
 QString PFDateTime::toParseString() const
 {
-	// Create a copy to manipulate
-	PFDateTime localThis = *this;
+	return _dateTime.toString(gParseDateFormat);
+}
 
-	// Make sure time spec is utf
-	if (localThis.timeSpec() != Qt::UTC)
-		localThis.setTimeSpec(Qt::UTC);
-
-	return localThis.toString(gParseDateFormat);
+const QDateTime& PFDateTime::dateTime() const
+{
+	return _dateTime;
 }
 
 #pragma mark - PFSerializable Methods
 
-void PFDateTime::fromJson(const QJsonObject& jsonObject)
+PFSerializablePtr PFDateTime::fromJson(const QJsonObject& jsonObject)
 {
 	qDebug() << "PFDateTime::fromJson";
-	QString utcDateString = jsonObject["iso"].toString();
-	*this = PFDateTime::fromParseString(utcDateString);
+	QString parseDateString = jsonObject["iso"].toString();
+	PFDateTimePtr dateTime = PFDateTime::dateTimeFromParseString(parseDateString);
+	return dateTime;
 }
 
-void PFDateTime::toJson(QJsonObject& jsonObject)
+bool PFDateTime::toJson(QJsonObject& jsonObject)
 {
 	qDebug() << "PFDateTime::toJson";
-	if (!isValid())
-		qFatal("PFDateTime::toJson could NOT convert PFDateTime to JSON because it is NOT valid");
-
 	jsonObject["__type"] = QString("Date");
 	jsonObject["iso"] = toParseString();
+	return true;
+}
+
+const QString PFDateTime::className() const
+{
+	return "PFDateTime";
 }
 
 }	// End of parse namespace
 
 #pragma mark - Custom Debug Output
 
-QDebug operator<<(QDebug dbg, const parse::PFDateTime& dateTime)
+QDebug operator<<(QDebug dbg, const parse::PFDateTimePtr& dateTime)
 {
 	QString timeSpecText;
-	if (dateTime.timeSpec() == Qt::LocalTime)
+	QDateTime qDateTime = dateTime->dateTime();
+	if (qDateTime.timeSpec() == Qt::LocalTime)
 		timeSpecText = "Qt::LocalTime";
-	else if (dateTime.timeSpec() == Qt::UTC)
+	else if (qDateTime.timeSpec() == Qt::UTC)
 		timeSpecText = "Qt::UTC";
-	else if (dateTime.timeSpec() == Qt::OffsetFromUTC)
+	else if (qDateTime.timeSpec() == Qt::OffsetFromUTC)
 		timeSpecText = "Qt::OffsetFromUTC";
 	else
 		timeSpecText = "Qt::TimeZone";
 
-	QString dateText = dateTime.toString("yyyy-MM-dd HH:mm:ss.zzz t") + " " + timeSpecText;
+	QString dateText = qDateTime.toString("yyyy-MM-dd HH:mm:ss.zzz t") + " " + timeSpecText;
 	dbg.nospace() << "PFDateTime(" << dateText << ")";
 
 	return dbg;

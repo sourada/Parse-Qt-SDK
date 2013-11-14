@@ -1,6 +1,6 @@
 //
 //  PFError.h
-//  BodyViz-Sync
+//  Parse
 //
 //  Created by Christian Noon on 11/5/13.
 //  Copyright (c) 2013 BodyViz. All rights reserved.
@@ -9,7 +9,11 @@
 #ifndef PARSE_PFERROR_H
 #define PARSE_PFERROR_H
 
+// Parse headers
+#include "PFTypedefs.h"
+
 // Qt headers
+#include <QObject>
 #include <QSharedPointer>
 #include <QString>
 
@@ -125,33 +129,30 @@ extern int const kPFErrorFileDownloadConnectionFailed;
 
 namespace parse {
 
-// Typedefs
-class PFError;
-typedef QSharedPointer<PFError> PFErrorPtr;
-
-class PFError
+class PFError : public QObject
 {
 public:
 
-	/** Constructor. */
-	PFError(int errorCode, const QString& errorMessage);
+	// Creation Methods
+	static PFErrorPtr errorWithCodeAndMessage(int code, const QString& message);
 
-	/** Destructor. */
-	~PFError();
-
+	// Error Accessor Methods
 	int errorCode() const;
 	const QString& errorMessage() const;
 
 protected:
 
-	/** Instance members. */
+	// Constructor / Destructor
+	PFError(int errorCode, const QString& errorMessage);
+	~PFError();
+
+	// Instance members
 	int			_errorCode;
 	QString		_errorMessage;
 };
 
 }	// End of parse namespace
 
-QDebug operator<<(QDebug dbg, const parse::PFError& error);
 QDebug operator<<(QDebug dbg, parse::PFErrorPtr error);
 
 #endif	// End of PARSE_PFERROR_H

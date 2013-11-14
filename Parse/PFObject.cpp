@@ -7,11 +7,13 @@
 //
 
 // Parse headers
-#include <Parse/PFDateTime.h>
-#include <Parse/PFFile.h>
-#include <Parse/PFManager.h>
-#include <Parse/PFObject.h>
-#include <Parse/PFUser.h>
+#include "PFACL.h"
+#include "PFDateTime.h"
+#include "PFError.h"
+#include "PFFile.h"
+#include "PFManager.h"
+#include "PFObject.h"
+#include "PFUser.h"
 
 // Qt headers
 #include <QEventLoop>
@@ -24,105 +26,152 @@ namespace parse {
 
 #pragma mark - Memory Management Methods
 
-PFObject::PFObject(const QString& className)
+PFObject::PFObject()
 {
-	initialize();
-	_parseClassName = className;
+	qDebug().nospace() << "Created PFObject(" << QString().sprintf("%8p", this) << ")";
 
-	// Add the default acl if set
-	PFACLPtr defaultACL;
-	bool currentUserAccess;
-	PFACL::defaultACLWithCurrentUserAccess(defaultACL, currentUserAccess);
-	if (!defaultACL.isNull())
-	{
-		// Modify the default acl if the current user access is set
-		if (currentUserAccess)
-		{
-			PFUserPtr currentUser = PFUser::currentUser();
-			if (!currentUser.isNull())
-			{
-				defaultACL = defaultACL->clone();
-				defaultACL->setReadAccessForUser(true, currentUser);
-				defaultACL->setWriteAccessForUser(true, currentUser);
-			}
-		}
-
-		setACL(defaultACL);
-	}
-}
-
-PFObject::PFObject(const QString& className, const QString& objectId)
-{
-	initialize();
-	_parseClassName = className;
-	_objectId = objectId;
-}
-
-void PFObject::initialize()
-{
 	_parseClassName = "";
 	_objectId = "";
 	_acl = PFACLPtr();
-	_createdAt = PFDateTime();
-	_updatedAt = PFDateTime();
-	_primitiveObjects = QVariantMap();
-	_updatedPrimitiveObjects = QVariantMap();
+	_createdAt = PFDateTimePtr();
+	_updatedAt = PFDateTimePtr();
+	_childObjects = QVariantMap();
+	_updatedChildObjects = QVariantMap();
 	_isSaving = false;
-	_saveReply = NULL;
+	_isDeleting = false;
 }
 
 PFObject::~PFObject()
 {
-	// No-op
-	qDebug() << "PFObject destroyed";
+	qDebug().nospace() << "Destroyed PFObject(" << QString().sprintf("%8p", this) << ")";
 }
+
+#pragma mark - Creation Methods
 
 PFObjectPtr PFObject::objectWithClassName(const QString& className)
 {
-	return PFObjectPtr(new PFObject(className));
+	if (className.isEmpty())
+	{
+		qWarning() << "PFObject::objectWithClassName failed to create new PFObject because the className is empty";
+		return PFObjectPtr();
+	}
+	else
+	{
+		// Create a new PFObject and set the parse class name
+		PFObjectPtr object = PFObjectPtr(new PFObject(), &QObject::deleteLater);
+		object->_parseClassName = className;
+
+		// Add the default acl if set
+		PFACLPtr defaultACL;
+		bool currentUserAccess;
+		PFACL::defaultACLWithCurrentUserAccess(defaultACL, currentUserAccess);
+		if (!defaultACL.isNull())
+		{
+			// Modify the default acl if the current user access is set
+			if (currentUserAccess)
+			{
+				PFUserPtr currentUser = PFUser::currentUser();
+				if (!currentUser.isNull())
+				{
+					defaultACL = defaultACL->clone();
+					defaultACL->setReadAccessForUser(true, currentUser);
+					defaultACL->setWriteAccessForUser(true, currentUser);
+				}
+			}
+
+			object->setACL(defaultACL);
+		}
+
+		return object;
+	}
 }
 
 PFObjectPtr PFObject::objectWithClassName(const QString& className, const QString& objectId)
 {
-	return PFObjectPtr(new PFObject(className, objectId));
+	if (className.isEmpty() || objectId.isEmpty())
+	{
+		qWarning() << "PFObject::objectWithClassName failed to create new PFObject because the className and/or the objectId is empty";
+		return PFObjectPtr();
+	}
+	else
+	{
+		PFObjectPtr object = PFObjectPtr(new PFObject(), &QObject::deleteLater);
+		object->_parseClassName = className;
+		object->_objectId = objectId;
+
+		return object;
+	}
 }
 
-QVariant PFObject::variantWithObject(PFObjectPtr object)
+PFObjectPtr PFObject::objectFromVariant(const QVariant& variant)
 {
-	QVariant variant;
-	variant.setValue(object);
-	return variant;
+	PFSerializablePtr serializable = PFSerializable::fromVariant(variant);
+	if (!serializable.isNull())
+		return serializable.objectCast<PFObject>();
+
+	return PFObjectPtr();
 }
 
-#pragma mark - User API Methods
+#pragma mark - Object Storage Methods
 
 void PFObject::setObjectForKey(const QVariant& object, const QString& key)
 {
-	_primitiveObjects[key] = object;
+	_childObjects[key] = object;
 	if (!_objectId.isEmpty())
-		_updatedPrimitiveObjects[key] = object;
+		_updatedChildObjects[key] = object;
+}
+
+void PFObject::setObjectForKey(PFSerializablePtr object, const QString& key)
+{
+	setObjectForKey(PFSerializable::toVariant(object), key);
 }
 
 const QVariant& PFObject::objectForKey(const QString& key)
 {
-	return _primitiveObjects[key];
+	return _childObjects[key];
 }
 
-QList<QString> PFObject::allKeys()
+QStringList PFObject::allKeys()
 {
-	return _primitiveObjects.keys();
+	return _childObjects.keys();
 }
+
+#pragma mark - ACL Accessor Methods
 
 void PFObject::setACL(PFACLPtr acl)
 {
 	_acl = acl;
-	setObjectForKey(PFACL::variantWithACL(acl), "ACL");
+	setObjectForKey(PFSerializable::toVariant(acl), "ACL");
 }
 
 PFACLPtr PFObject::ACL()
 {
 	return _acl;
 }
+
+#pragma mark - Object Info Getter Methods
+
+const QString PFObject::parseClassName()
+{
+	return _parseClassName;
+}
+
+const QString& PFObject::objectId()
+{
+	return _objectId;
+}
+
+PFDateTimePtr PFObject::createdAt()
+{
+	return _createdAt;
+}
+
+PFDateTimePtr PFObject::updatedAt()
+{
+	return _updatedAt;
+}
+
+#pragma mark - Save Methods
 
 bool PFObject::save()
 {
@@ -132,7 +181,7 @@ bool PFObject::save()
 
 bool PFObject::save(PFErrorPtr& error)
 {
-	// Early out if the file is already saving
+	// Early out if the object is already saving
 	if (_isSaving)
 	{
 		qWarning().nospace() << "WARNING: PFObject is already being saved";
@@ -143,35 +192,38 @@ bool PFObject::save(PFErrorPtr& error)
 	_isSaving = true;
 
 	// Prep the request and data
-	bool updateRequired = needsUpdated();
-	QNetworkRequest request = buildSaveNetworkRequest();
-	QByteArray data = buildSaveData();
+	bool updateRequired = needsUpdate();
+	QNetworkRequest request;
+	QByteArray data;
+	createSaveNetworkRequest(request, data);
 
 	// Execute the request and connect the callbacks
-	QNetworkReply* reply = NULL;
-	QNetworkAccessManager* networkAccessManager = PFManager::instance()->networkAccessManager();
-	if (!updateRequired)
-		reply = networkAccessManager->post(request, data);
+	QNetworkReply* networkReply = NULL;
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	if (updateRequired)
+		networkReply = networkAccessManager->put(request, data);
 	else
-		reply = networkAccessManager->put(request, data);
+		networkReply = networkAccessManager->post(request, data);
 
 	// Block the async nature of the request using our own event loop until the reply finishes
 	QEventLoop eventLoop;
-	QObject::connect(reply, SIGNAL(finished()), &eventLoop, SLOT(quit()));
+	QObject::connect(networkReply, SIGNAL(finished()), &eventLoop, SLOT(quit()));
 	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
 
-	// Handle the reply
-	error = parseSaveNetworkReply(reply, updateRequired);
-	bool succeeded = error.isNull();
+	// Deserialize the reply
+	bool success = deserializeSaveNetworkReply(networkReply, updateRequired, error);
 
-	// Clear out the updated primitives if necessary
-	if (updateRequired && succeeded)
-		_updatedPrimitiveObjects.clear();
+	// Clear out the updated children if necessary
+	if (updateRequired && success)
+		_updatedChildObjects.clear();
 
 	// Update the ivar
 	_isSaving = false;
 
-	return succeeded;
+	// Clean up
+	networkReply->deleteLater();
+
+	return success;
 }
 
 bool PFObject::saveInBackground(QObject *saveCompleteTarget, const char *saveCompleteAction)
@@ -187,95 +239,202 @@ bool PFObject::saveInBackground(QObject *saveCompleteTarget, const char *saveCom
 	_isSaving = true;
 
 	// Prep the request and data
-	bool updateRequired = needsUpdated();
-	QNetworkRequest request = buildSaveNetworkRequest();
-	QByteArray data = buildSaveData();
+	bool updateRequired = needsUpdate();
+	QNetworkRequest request;
+	QByteArray data;
+	createSaveNetworkRequest(request, data);
 
 	// Execute the request and connect the callbacks
-	QNetworkAccessManager* networkAccessManager = PFManager::instance()->networkAccessManager();
-	if (!updateRequired)
-		_saveReply = networkAccessManager->post(request, data);
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	if (updateRequired)
+		networkAccessManager->put(request, data);
 	else
-		_saveReply = networkAccessManager->put(request, data);
-	QObject::connect(_saveReply, SIGNAL(finished()), this, SLOT(handleSaveCompleted()));
-	QObject::connect(this, SIGNAL(saveCompleted(PFObject*, bool, PFErrorPtr)), saveCompleteTarget, saveCompleteAction);
+		networkAccessManager->post(request, data);
+	QObject::connect(networkAccessManager, SIGNAL(finished(QNetworkReply*)), this, SLOT(handleSaveCompleted(QNetworkReply*)));
+	QObject::connect(this, SIGNAL(saveCompleted(bool, PFErrorPtr)), saveCompleteTarget, saveCompleteAction);
 
 	return true;
 }
 
-#pragma mark - Backend API - PFSerializable Methods
+#pragma mark - Delete Object Methods
 
-void PFObject::fromJson(const QJsonObject& jsonObject)
+bool PFObject::deleteObject()
+{
+	PFErrorPtr error;
+	return deleteObject(error);
+}
+
+bool PFObject::deleteObject(PFErrorPtr& error)
+{
+	// Early out if the object is already being deleted
+	if (_isDeleting)
+	{
+		qWarning().nospace() << "WARNING: PFObject is already being deleted";
+		return false;
+	}
+
+	// Update the ivar
+	_isDeleting = true;
+
+	// Create the network request
+	QNetworkRequest networkRequest = createDeleteObjectNetworkRequest();
+
+	// Execute the network request and connect the callbacks
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	QNetworkReply* networkReply = networkAccessManager->deleteResource(networkRequest);
+
+	// Block the async nature of the request using our own event loop until the reply finishes
+	QEventLoop eventLoop;
+	QObject::connect(networkReply, SIGNAL(finished()), &eventLoop, SLOT(quit()));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+
+	// Deserialize the reply
+	bool success = deserializeDeleteObjectReply(networkReply, error);
+
+	// Update the ivars
+	_isDeleting = false;
+	_objectId = "";
+
+	// Clean up
+	networkReply->deleteLater();
+
+	return success;
+}
+
+bool PFObject::deleteObjectInBackground(QObject *deleteObjectCompleteTarget, const char *deleteObjectCompleteAction)
+{
+	// Early out if the object is already being deleted
+	if (_isDeleting)
+	{
+		qWarning().nospace() << "WARNING: PFObject is already being deleted";
+		return false;
+	}
+
+	// Update the ivar
+	_isDeleting = true;
+
+	// Create the network request
+	QNetworkRequest networkRequest = createDeleteObjectNetworkRequest();
+
+	// Execute the network request and connect the callbacks
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	networkAccessManager->deleteResource(networkRequest);
+	QObject::connect(networkAccessManager, SIGNAL(finished(QNetworkReply*)), this, SLOT(handleDeleteObjectCompleted(QNetworkReply*)));
+	QObject::connect(this, SIGNAL(deleteObjectCompleted(bool, PFErrorPtr)), deleteObjectCompleteTarget, deleteObjectCompleteAction);
+
+	return true;
+}
+
+#pragma mark - PFSerializable Methods
+
+PFSerializablePtr PFObject::fromJson(const QJsonObject& jsonObject)
 {
 	Q_UNUSED(jsonObject);
 	qDebug() << "PFFile::fromJSON NOT implemented!!!";
+	return PFSerializablePtr();
 }
 
-void PFObject::toJson(QJsonObject& jsonObject)
+bool PFObject::toJson(QJsonObject& jsonObject)
 {
 	qDebug() << "PFObject::toJson";
 	if (_objectId.isEmpty())
-		qFatal("PFObject::toJson could NOT convert to PFObject to JSON because the _objectId is not set");
-	jsonObject["__type"] = QString("Pointer");
-	jsonObject["className"] = _parseClassName;
-	jsonObject["objectId"] = _objectId;
+	{
+		qWarning() << "PFObject::toJson could NOT convert to PFObject to JSON because the _objectId is not set";
+		return false;
+	}
+	else
+	{
+		jsonObject["__type"] = QString("Pointer");
+		jsonObject["className"] = _parseClassName;
+		jsonObject["objectId"] = _objectId;
+		return true;
+	}
 }
 
-#pragma mark - Protected Save Slots
-
-void PFObject::handleSaveCompleted()
+const QString PFObject::className() const
 {
-	// Handle the reply
-	bool updateRequired = needsUpdated();
-	PFErrorPtr error = parseSaveNetworkReply(_saveReply, updateRequired);
-	bool succeeded = error.isNull();
+	return "PFObject";
+}
 
-	// Clear out the updated primitives if necessary
-	if (updateRequired && succeeded)
-		_updatedPrimitiveObjects.clear();
+#pragma mark - Background Request Completion Signals
+
+void PFObject::handleSaveCompleted(QNetworkReply* networkReply)
+{
+	// Disconnect the network access manager as well as all the connected signals to this instance
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	networkAccessManager->disconnect(this);
+
+	// Deserialize the reply
+	bool updated = needsUpdate();
+	PFErrorPtr error;
+	bool success = deserializeSaveNetworkReply(networkReply, updated, error);
+
+	// Clear out the updated children if necessary
+	if (updated && success)
+		_updatedChildObjects.clear();
 
 	// Update the ivar
 	_isSaving = false;
 
-	// Notify the target
-	emit saveCompleted(this, succeeded, error);
+	// Emit the signal that the save has completed and then disconnect it
+	emit saveCompleted(success, error);
+	this->disconnect(SIGNAL(saveCompleted(bool, PFErrorPtr)));
 
 	// Clean up
-	_saveReply->deleteLater();
+	networkReply->deleteLater();
+}
+
+void PFObject::handleDeleteObjectCompleted(QNetworkReply* networkReply)
+{
+	// Disconnect the network access manager as well as all the connected signals to this instance
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	networkAccessManager->disconnect(this);
+
+	// Deserialize the reply
+	PFErrorPtr error;
+	bool success = deserializeDeleteObjectReply(networkReply, error);
+
+	// Update the ivars
+	_isDeleting = false;
+	_objectId = "";
+
+	// Emit the signal that the delete object has completed and then disconnect it
+	emit deleteObjectCompleted(success, error);
+	this->disconnect(SIGNAL(deleteObjectCompleted(bool, PFErrorPtr)));
+
+	// Clean up
+	networkReply->deleteLater();
 }
 
 #pragma mark - Protected Methods
 
-bool PFObject::needsUpdated()
+bool PFObject::needsUpdate()
 {
 	return !_objectId.isEmpty();
 }
 
-QNetworkRequest PFObject::buildSaveNetworkRequest()
+#pragma mark - Network Request Builder Methods
+
+void PFObject::createSaveNetworkRequest(QNetworkRequest& request, QByteArray& data)
 {
 	// Create the url based on whether we should create or update the PFObject
-	bool updateRequired = needsUpdated();
+	bool updateRequired = needsUpdate();
 	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _parseClassName);
 	if (updateRequired)
 		url = QUrl(url.toString() + "/" + _objectId);
 
 	// Create a network request
-	QNetworkRequest request(url);
-	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::instance()->applicationId().toUtf8());
-	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::instance()->restApiKey().toUtf8());
+	request = QNetworkRequest(url);
+	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
+	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
 	request.setRawHeader(QString("Content-Type").toUtf8(), QString("application/json").toUtf8());
 
-	return request;
-}
-
-QByteArray PFObject::buildSaveData()
-{
-	// Iterate through all the primitives and build the data from them
+	// Figure out whether we need to
 	QVariantMap objectsToSerialize;
-	if (!needsUpdated())
-		objectsToSerialize = _primitiveObjects;
+	if (updateRequired)
+		objectsToSerialize = _updatedChildObjects;
 	else
-		objectsToSerialize = _updatedPrimitiveObjects;
+		objectsToSerialize = _childObjects;
 
 	// Serialize all the objects into json
 	QJsonObject jsonObject;
@@ -284,10 +443,8 @@ QByteArray PFObject::buildSaveData()
 		QVariant objectToSerialize = objectsToSerialize[key];
 		jsonObject[key] = convertDataToJson(objectToSerialize);
 	}
-	QByteArray data = QJsonDocument(jsonObject).toJson(QJsonDocument::Compact);
+	data = QJsonDocument(jsonObject).toJson(QJsonDocument::Compact);
 	qDebug() << "Data: " << data;
-
-	return data;
 }
 
 QJsonValue PFObject::convertDataToJson(const QVariant& data)
@@ -327,39 +484,11 @@ QJsonValue PFObject::convertDataToJson(const QVariant& data)
 
 		return QJsonValue(jsonObject);
 	}
-	else if (data.canConvert<PFACLPtr>())	// PFACLPtr
+	else if (data.canConvert<PFSerializablePtr>())	// PFSerializablePtr
 	{
-		PFACLPtr acl = data.value<PFACLPtr>();
+		PFSerializablePtr serializable = data.value<PFSerializablePtr>();
 		QJsonObject jsonObject;
-		acl->toJson(jsonObject);
-		return QJsonValue(jsonObject);
-	}
-	else if (data.canConvert<PFDateTime>())	// PFDateTime
-	{
-		PFDateTime dateTime = data.value<PFDateTime>();
-		QJsonObject jsonObject;
-		dateTime.toJson(jsonObject);
-		return QJsonValue(jsonObject);
-	}
-	else if (data.canConvert<PFFilePtr>())	// PFFilePtr
-	{
-		PFFilePtr file = data.value<PFFilePtr>();
-		QJsonObject jsonObject;
-		file->toJson(jsonObject);
-		return QJsonValue(jsonObject);
-	}
-	else if (data.canConvert<PFObjectPtr>())	// PFObjectPtr
-	{
-		PFObjectPtr object = data.value<PFObjectPtr>();
-		QJsonObject jsonObject;
-		object->toJson(jsonObject);
-		return QJsonValue(jsonObject);
-	}
-	else if (data.canConvert<PFUserPtr>())	// PFUserPtr
-	{
-		PFUserPtr user = data.value<PFUserPtr>();
-		QJsonObject jsonObject;
-		user->toJson(jsonObject);
+		serializable->toJson(jsonObject);
 		return QJsonValue(jsonObject);
 	}
 	else
@@ -368,37 +497,72 @@ QJsonValue PFObject::convertDataToJson(const QVariant& data)
 	}
 }
 
-PFErrorPtr PFObject::parseSaveNetworkReply(QNetworkReply* networkReply, bool updated)
+QNetworkRequest PFObject::createDeleteObjectNetworkRequest()
+{
+	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _parseClassName + "/" + _objectId);
+	QNetworkRequest request(url);
+	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
+	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
+
+	return request;
+}
+
+#pragma mark - Network Reply Deserialization Methods
+
+bool PFObject::deserializeSaveNetworkReply(QNetworkReply* networkReply, bool updated, PFErrorPtr& error)
 {
 	// Parse the json reply
 	QJsonDocument doc = QJsonDocument::fromJson(networkReply->readAll());
 	QJsonObject jsonObject = doc.object();
 
-	// Notify the target of the success or failure
+	// Extract the JSON payload
 	if (networkReply->error() == QNetworkReply::NoError) // SUCCESS
 	{
 		if (!updated) // SAVED
 		{
 			QString createdAt = jsonObject["createdAt"].toString();
-			_createdAt = PFDateTime::fromParseString(createdAt);
+			_createdAt = PFDateTime::dateTimeFromParseString(createdAt);
 			_objectId = jsonObject["objectId"].toString();
 			qDebug().nospace() << "Created Object:" << _parseClassName << " with objectId:" << _objectId;
 		}
 		else // UPDATED
 		{
 			QString updatedAt = jsonObject["updatedAt"].toString();
-			_updatedAt = PFDateTime::fromParseString(updatedAt);
+			_updatedAt = PFDateTime::dateTimeFromParseString(updatedAt);
 			qDebug().nospace() << "Updated Object:" << _parseClassName << " with objectId:" << _objectId;
 		}
 
-		return PFErrorPtr();
+		return true;
 	}
 	else // FAILURE
 	{
 		int errorCode = jsonObject["code"].toInt();
 		QString errorMessage = jsonObject["error"].toString();
-		qDebug() << "Save error:" << errorCode << ":" << errorMessage;
-		return PFErrorPtr(new PFError(errorCode, errorMessage));
+		error = PFError::errorWithCodeAndMessage(errorCode, errorMessage);
+
+		return false;
+	}
+}
+
+bool PFObject::deserializeDeleteObjectReply(QNetworkReply* networkReply, PFErrorPtr& error)
+{
+	// Parse the json reply
+	QJsonDocument doc = QJsonDocument::fromJson(networkReply->readAll());
+	QJsonObject jsonObject = doc.object();
+
+	// Extract the JSON payload
+	if (networkReply->error() == QNetworkReply::NoError) // SUCCESS
+	{
+		// Payload is empty on success
+		return true;
+	}
+	else // FAILURE
+	{
+		int errorCode = jsonObject["code"].toInt();
+		QString errorMessage = jsonObject["error"].toString();
+		error = PFError::errorWithCodeAndMessage(errorCode, errorMessage);
+
+		return false;
 	}
 }
 

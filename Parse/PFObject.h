@@ -10,10 +10,7 @@
 #define PARSE_PFOBJECT_H
 
 // Parse headers
-#include <Parse/PFACL.h>
-#include <Parse/PFDateTime.h>
-#include <Parse/PFError.h>
-#include <Parse/PFSerializable.h>
+#include "PFSerializable.h"
 
 // Qt headers
 #include <QHash>
@@ -21,11 +18,7 @@
 
 namespace parse {
 
-// Typedefs
-class PFObject;
-typedef QSharedPointer<PFObject> PFObjectPtr;
-
-class PFObject : public QObject, public PFSerializable
+class PFObject : public PFSerializable
 {
 	Q_OBJECT
 
@@ -35,80 +28,102 @@ public:
 	//                                  USER API
 	//=================================================================================
 
-	// Destructor
-	~PFObject();
-
-	// Creation methods
+	// Creation Methods
 	static PFObjectPtr objectWithClassName(const QString& className);
 	static PFObjectPtr objectWithClassName(const QString& className, const QString& objectId);
+	static PFObjectPtr objectFromVariant(const QVariant& variant);
 
-	// Variant helper
-	static QVariant variantWithObject(PFObjectPtr object);
-
-	// Primitives
+	// Object Storage Methods
 	void setObjectForKey(const QVariant& object, const QString& key);
+	void setObjectForKey(PFSerializablePtr object, const QString& key);
 	const QVariant& objectForKey(const QString& key);
-	QList<QString> allKeys();
+	QStringList allKeys();
 
-	// ACL Accessors
+	// ACL Accessor Methods
 	void setACL(PFACLPtr acl);
 	PFACLPtr ACL();
 
-	// Accessors
-	inline const QString& parseClassName() { return _parseClassName; }
-	inline const QString& objectId() { return _objectId; }
-	inline const PFDateTime& createdAt() { return _createdAt; }
-	inline const PFDateTime& updatedAt() { return _updatedAt; }
+	// Object Info Getter Methods
+	virtual const QString parseClassName();
+	const QString& objectId();
+	PFDateTimePtr createdAt();
+	PFDateTimePtr updatedAt();
 
-	// Save
+	// Save Methods - saveCompleteAction signature: (bool succeeded, PFErrorPtr error)
 	bool save();
 	bool save(PFErrorPtr& error);
 	bool saveInBackground(QObject *saveCompleteTarget, const char *saveCompleteAction);
+
+	// Delete Methods - deleteObjectCompleteAction signature: (bool succeeded, PFErrorPtr error)
+	bool deleteObject();
+	bool deleteObject(PFErrorPtr& error);
+	bool deleteObjectInBackground(QObject *deleteObjectCompleteTarget, const char *deleteObjectCompleteAction);
+
+	////////////////////////////////////////////////////////////////
+	//
+	// TODO List (required):
+	// - removeObjectForKey
+	// - Array Add and Remove
+	// - Increment Key
+	// - Fetch, Fetch If Needed
+	//
+	// TODO List (optional):
+	// - Save All
+	// - Delete All
+	// - Fetch All, Fetch All If Needed
+	//
+	////////////////////////////////////////////////////////////////
 
 	//=================================================================================
 	//                                BACKEND API
 	//=================================================================================
 
 	// PFSerializable Methods
-	void fromJson(const QJsonObject& jsonObject);
-	void toJson(QJsonObject& jsonObject);
+	virtual PFSerializablePtr fromJson(const QJsonObject& jsonObject);
+	virtual bool toJson(QJsonObject& jsonObject);
+	virtual const QString className() const;
 
 protected slots:
 
-	// Save Slots
-	void handleSaveCompleted();
+	// Background Network Reply Completion Slots
+	void handleSaveCompleted(QNetworkReply* networkReply);
+	void handleDeleteObjectCompleted(QNetworkReply* networkReply);
 
 signals:
 
-	// Save Signals
-	void saveCompleted(PFObject* object, bool succeeded, PFErrorPtr error);
+	// Background Request Completion Signals
+	void saveCompleted(bool succeeded, PFErrorPtr error);
+	void deleteObjectCompleted(bool succeeded, PFErrorPtr error);
 
 protected:
 
-	// Constructor
-	PFObject(const QString& className);
-	PFObject(const QString& className, const QString& objectId);
+	// Constructor / Destructor
+	PFObject();
+	~PFObject();
 
-	// Default initialization
-	void initialize();
+	// Returns true if the if the object exists in the cloud and needs an update,
+	// false if it hasn't been put into the cloud yet
+	bool needsUpdate();
 
-	// Methods for constructing a save
-	bool needsUpdated();
-	QNetworkRequest buildSaveNetworkRequest();
-	QByteArray buildSaveData();
+	// Network Request Builder Methods
+	virtual void createSaveNetworkRequest(QNetworkRequest& request, QByteArray& data);
 	QJsonValue convertDataToJson(const QVariant& data); // Recursive
-	PFErrorPtr parseSaveNetworkReply(QNetworkReply* networkReply, bool updated);
+	virtual QNetworkRequest createDeleteObjectNetworkRequest();
 
-	/** Instance members. */
+	// Network Reply Deserialization Methods
+	bool deserializeSaveNetworkReply(QNetworkReply* networkReply, bool updated, PFErrorPtr& error);
+	bool deserializeDeleteObjectReply(QNetworkReply* networkReply, PFErrorPtr& error);
+
+	// Instance members
 	QString				_parseClassName;
 	QString				_objectId;
 	PFACLPtr			_acl;
-	PFDateTime			_createdAt;
-	PFDateTime			_updatedAt;
-	QVariantMap			_primitiveObjects;
-	QVariantMap			_updatedPrimitiveObjects;
+	PFDateTimePtr		_createdAt;
+	PFDateTimePtr		_updatedAt;
+	QVariantMap			_childObjects;
+	QVariantMap			_updatedChildObjects;
 	bool				_isSaving;
-	QNetworkReply*		_saveReply;
+	bool				_isDeleting;
 };
 
 }	// End of parse namespace

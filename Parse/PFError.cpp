@@ -1,6 +1,6 @@
 //
 //  PFError.cpp
-//  BodyViz-Sync
+//  Parse
 //
 //  Created by Christian Noon on 11/5/13.
 //  Copyright (c) 2013 BodyViz. All rights reserved.
@@ -8,6 +8,9 @@
 
 // Parse headers
 #include "PFError.h"
+
+// Qt headers
+#include <QDebug>
 
 extern int const kPFErrorInternalServer = 1;
 
@@ -68,17 +71,29 @@ extern int const kPFErrorFileDownloadConnectionFailed = 300;
 
 namespace parse {
 
+#pragma mark - Memory Management Methods
+
 PFError::PFError(int errorCode, const QString& errorMessage) :
 	_errorCode(errorCode),
 	_errorMessage(errorMessage)
 {
-	// No-op
+	qDebug().nospace() << "Created PFError(" << QString().sprintf("%8p", this) << ")";
 }
 
 PFError::~PFError()
 {
-	// No-op
+	qDebug().nospace() << "Destroyed PFError(" << QString().sprintf("%8p", this) << ")";
 }
+
+#pragma mark - Static Creation Methods
+
+PFErrorPtr PFError::errorWithCodeAndMessage(int code, const QString& message)
+{
+	PFErrorPtr error = PFErrorPtr(new PFError(code, message), &QObject::deleteLater);
+	return error;
+}
+
+#pragma mark - Error Access Methods
 
 int PFError::errorCode() const
 {
@@ -92,18 +107,13 @@ const QString& PFError::errorMessage() const
 
 }	// End of parse namespace
 
-QDebug createPFErrorMessage(QDebug dbg, const parse::PFError& error)
-{
-	dbg.nospace() << "PFError [" << error.errorCode() << "] " << error.errorMessage();
-	return dbg.maybeSpace();
-}
-
-QDebug operator<<(QDebug dbg, const parse::PFError& error)
-{
-	return createPFErrorMessage(dbg, error);
-}
+#pragma mark - Custom Debug Output
 
 QDebug operator<<(QDebug dbg, parse::PFErrorPtr error)
 {
-	return createPFErrorMessage(dbg, *(error.data()));
+	QString message = "NULL";
+	if (!error.isNull())
+		message = QString::number(error->errorCode()) + " " + error->errorMessage();
+	dbg.nospace() << "PFError(" << message << ")";
+	return dbg.maybeSpace();
 }

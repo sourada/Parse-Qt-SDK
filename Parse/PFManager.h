@@ -9,9 +9,6 @@
 #ifndef PARSE_PFMANAGER_H
 #define PARSE_PFMANAGER_H
 
-// Parse headers
-#include <Parse/PFError.h>
-
 // Qt headers
 #include <QDir>
 #include <QNetworkAccessManager>
@@ -21,21 +18,19 @@ namespace parse {
 
 class PFManager : public QObject
 {
-	Q_OBJECT
-
 public:
 
 	//=================================================================================
 	//                                  USER API
 	//=================================================================================
 
-	/** Creates a singleton instance of the PFManager. */
-	static PFManager* instance();
+	// Creates a singleton instance of the PFManager
+	static PFManager* sharedManager();
 
-	/** Sets the application id and rest api key. */
+	// Sets the application id and rest api key
 	void setApplicationIdAndRestApiKey(const QString& applicationId, const QString& restApiKey);
 
-	/** Accessor Methods. */
+	// Application ID, Rest API Key Getter Methods
 	const QString& applicationId();
 	const QString& restApiKey();
 
@@ -43,32 +38,19 @@ public:
 	//                                BACKEND API
 	//=================================================================================
 
+	// Caching and Network Methods
 	QNetworkAccessManager* networkAccessManager();
-	QDir& cacheDirectory();
 	void setCacheDirectory(const QDir& cacheDirectory);
-
-protected slots:
-
-	// PFUser completion slots
-	void handleSignUpReply(QNetworkReply* networkReply);
-	void handleLogInReply(QNetworkReply* networkReply);
-	void handleRequestPasswordResetReply(QNetworkReply* networkReply);
-
-signals:
-
-	// PFUser completion signals
-	void signUpCompleted(bool succeeded, PFErrorPtr error);
-	void logInCompleted(bool succeeded, PFErrorPtr error);
-	void requestPasswordResetCompleted(bool succeeded, PFErrorPtr error);
+	QDir& cacheDirectory();
+	void clearCache();
 
 protected:
 
+	// Constructor / Destructor
 	PFManager();
 	~PFManager();
 
-	void registerMetaTypesForSignalSlots();
-
-	/** Instance members. */
+	// Instance members
 	QString					_applicationId;
 	QString					_restApiKey;
 	QDir					_cacheDirectory;

@@ -6,107 +6,262 @@
 //  Copyright (c) 2013 BodyViz. All rights reserved.
 //
 
-// Qt headers
-#include <QEventLoop>
-#include <QFileInfo>
-#include <QHttpMultiPart>
-#include <QHttpPart>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QNetworkRequest>
-#include <QUrl>
-
 // Parse headers
+#include "PFError.h"
 #include "PFFile.h"
 #include "PFManager.h"
 
+// Qt headers
+#include <QEventLoop>
+#include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QMimeDatabase>
+#include <QNetworkRequest>
+#include <QUrl>
+
 namespace parse {
+
+// Static Globals
+static QString gDefaultName = "parse_file-no_name";
 
 #pragma mark - Memory Management Methods
 
-PFFile::PFFile(const QString& filepath)
+PFFile::PFFile()
 {
-	// Set the ivars
-	_filepath = filepath;
-	QFile file(_filepath);
-	file.open(QIODevice::ReadOnly);
-	_data = QSharedPointer<QByteArray>(new QByteArray());
-	_data->append(file.readAll());
-	file.close();
+	qDebug().nospace() << "Created PFFile(" << QString().sprintf("%8p", this) << ")";
+
+	_filepath = "";
+	_mimeType = "";
 	_name = "";
 	_url = "";
-	_isDirty = true;
+	_data = QByteArrayPtr();
+	_tempDownloadData = QByteArrayPtr();
+	_isDirty = false;
 	_isUploading = false;
 	_isDownloading = false;
 	_saveReply = NULL;
 	_getDataReply = NULL;
-
-	// Make sure the mime type is supported
-	QFileInfo fileInfo(filepath);
-	QString extension = fileInfo.completeSuffix();
-	_mimeType = convertExtensionToMimeType(extension);
-	Q_ASSERT_X(!mimeType.isEmpty(), "PFFile upload constructor", "mime type NOT supported for extension");
-}
-
-PFFile::PFFile(const QString& name, const QString& url) :
-	_filepath(""),
-	_mimeType(""),
-	_name(name),
-	_url(url),
-	_data(),
-	_tempDownloadData(),
-	_isDirty(false),
-	_isUploading(false),
-	_isDownloading(false),
-	_saveReply(NULL),
-	_getDataReply(NULL)
-{
-	// No-op
 }
 
 PFFile::~PFFile()
 {
-	// No-op
+	qDebug().nospace() << "Destroyed PFFile(" << QString().sprintf("%8p", this) << ")";
 }
 
-QVariant PFFile::variantWithFile(const PFFilePtr& file)
+#pragma mark - Creation Methods for Upload
+
+PFFilePtr PFFile::fileWithData(QByteArrayPtr data)
 {
-	QVariant variant;
-	variant.setValue(file);
-	return variant;
+	// Make sure the parameters are valid
+	if (data.isNull())
+	{
+		qWarning() << "PFFile::fileWithData failed because the set up parameters were not valid";
+		return PFFilePtr();
+	}
+	else
+	{
+		// Create a new file
+		PFFilePtr file = PFFilePtr(new PFFile(), &QObject::deleteLater);
+
+		// Mark the file as dirty because it needs to be uploaded
+		file->_isDirty = true;
+
+		// Grab the mime type
+		QMimeDatabase mimeDatabase;
+		QMimeType mimeType = mimeDatabase.mimeTypeForData(*(data.data()));
+		file->_mimeType = mimeType.filterString();
+
+		// Set the name to upload
+		file->_name = gDefaultName;
+		if (!mimeType.preferredSuffix().isEmpty())
+			file->_name += "." + mimeType.preferredSuffix();
+
+		// Store a shared reference to the data
+		file->_data = data;
+
+		return file;
+	}
+}
+
+PFFilePtr PFFile::fileWithNameAndData(const QString& name, QByteArrayPtr data)
+{
+	// Make sure the parameters are valid
+	if (name.isEmpty() || data.isNull())
+	{
+		qWarning() << "PFFile::fileWithNameAndData failed because the set up parameters were not valid";
+		return PFFilePtr();
+	}
+	else
+	{
+		// Create a new file
+		PFFilePtr file = PFFilePtr(new PFFile(), &QObject::deleteLater);
+
+		// Mark the file as dirty because it needs to be uploaded
+		file->_isDirty = true;
+
+		// Grab the mime type
+		QMimeDatabase mimeDatabase;
+		QMimeType mimeType = mimeDatabase.mimeTypeForData(*(data.data()));
+		file->_mimeType = mimeType.filterString();
+
+		// Set the name to upload
+		file->_name = name;
+
+		// Store a shared reference to the data
+		file->_data = data;
+
+		return file;
+	}
+}
+
+PFFilePtr PFFile::fileWithNameAndContentsAtPath(const QString& name, const QString& filepath)
+{
+	// Make sure the parameters are valid
+	QFileInfo fileInfo(filepath);
+	if (!fileInfo.isFile() || name.isEmpty())
+	{
+		qWarning() << "PFFile::fileWithNameAndContentsAtPath failed because the set up parameters were not valid";
+		return PFFilePtr();
+	}
+	else
+	{
+		// Create a new file
+		PFFilePtr file = PFFilePtr(new PFFile(), &QObject::deleteLater);
+
+		// Mark the file as dirty because it needs to be uploaded
+		file->_isDirty = true;
+
+		// Grab the mime type
+		QMimeDatabase mimeDatabase;
+		QMimeType mimeType = mimeDatabase.mimeTypeForFile(fileInfo);
+		file->_mimeType = mimeType.filterString();
+
+		// Store the name and filepath
+		file->_name = name;
+		file->_filepath = filepath;
+
+		// Load the data out of the file and store it in data
+		QFile fileData(filepath);
+		fileData.open(QIODevice::ReadOnly);
+		file->_data = QByteArrayPtr(new QByteArray());
+		file->_data->append(fileData.readAll());
+		fileData.close();
+
+		return file;
+	}
+}
+
+PFFilePtr PFFile::fileFromVariant(const QVariant& variant)
+{
+	PFSerializablePtr serializable = PFSerializable::fromVariant(variant);
+	if (!serializable.isNull())
+		return serializable.objectCast<PFFile>();
+
+	return PFFilePtr();
+}
+
+#pragma mark - Creation Methods for Download
+
+PFFilePtr PFFile::fileWithNameAndUrl(const QString& name, const QString& url)
+{
+	// Make sure the parameters are valid
+	if (name.isEmpty() || url.isEmpty())
+	{
+		qWarning() << "FAILURE: PFFile::fileWithNameAndUrl() failed because the set up parameters were not valid";
+		return PFFilePtr();
+	}
+	else
+	{
+		// Create a new file
+		PFFilePtr file = PFFilePtr(new PFFile(), &QObject::deleteLater);
+		file->_name = name;
+		file->_url = url;
+
+		return file;
+	}
 }
 
 #pragma mark - Public User API Methods
+
+const QString& PFFile::filepath()
+{
+	return _filepath;
+}
+
+const QString& PFFile::name()
+{
+	return _name;
+}
+
+const QString& PFFile::url()
+{
+	return _url;
+}
 
 bool PFFile::isDirty()
 {
 	return _isDirty;
 }
 
+#pragma mark - Save Methods
+
 bool PFFile::save()
 {
+	PFErrorPtr error;
+	return save(error);
+}
+
+bool PFFile::save(PFErrorPtr& error)
+{
+	// Early out if the file has already been uploaded
+	if (!_isDirty)
+	{
+		qWarning().nospace() << "WARNING: PFFile \"" << _name << "\" has already been saved";
+		return false;
+	}
+
+	// Early out if the file is already uploading
+	if (_isUploading)
+	{
+		qWarning().nospace() << "WARNING: PFFile \"" << _filepath << "\" is already uploading";
+		return false;
+	}
+
+	// Update the ivar
+	_isUploading = true;
+
 	// Create a network request
-	QFileInfo fileInfo(_filepath);
-	QString filename = fileInfo.fileName();
-	QUrl url = QUrl(QString("https://api.parse.com/1/files/") + filename);
-	QNetworkRequest request(url);
-	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::instance()->applicationId().toUtf8());
-	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::instance()->restApiKey().toUtf8());
-	request.setRawHeader(QString("Content-Type").toUtf8(), _mimeType.toUtf8());
+	QNetworkRequest request = createSaveNetworkRequest();
 
 	// Execute the request and connect the callbacks
-	QNetworkAccessManager* networkAccessManager = PFManager::instance()->networkAccessManager();
-	QNetworkReply *reply = networkAccessManager->post(request, *(_data.data()));
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	QNetworkReply* networkReply = networkAccessManager->post(request, *(_data.data()));
 
+	// Block the async nature of the request using our own event loop until the reply finishes
 	QEventLoop eventLoop;
-	QObject::connect(reply, SIGNAL(finished()), &eventLoop, SLOT(quit()));
+	QObject::connect(networkReply, SIGNAL(finished()), &eventLoop, SLOT(quit()));
 	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
 
-//	QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-	qDebug() << "PFFile save reply:" << reply->readAll() << " error:" << (reply->error() == QNetworkReply::NoError);
-	qDebug() << "reply error type:" << reply->errorString();
+	// Update our ivar
+	_isUploading = false;
 
-	return true;
+	// Deserialize the reply
+	bool success = deserializeSaveNetworkReply(networkReply, error);
+
+	// Remove the dirty flag if the upload succeeded
+	if (success)
+		_isDirty = false;
+
+	// Clean up
+	networkReply->deleteLater();
+
+	return success;
+}
+
+bool PFFile::saveInBackground(QObject *saveCompleteTarget, const char *saveCompleteAction)
+{
+	return saveInBackground(NULL, "", saveCompleteTarget, saveCompleteAction);
 }
 
 bool PFFile::saveInBackground(QObject *saveProgressTarget, const char *saveProgressAction, QObject *saveCompleteTarget, const char *saveCompleteAction)
@@ -129,31 +284,28 @@ bool PFFile::saveInBackground(QObject *saveProgressTarget, const char *saveProgr
 	_isUploading = true;
 
 	// Create a network request
-	QFileInfo fileInfo(_filepath);
-	QString filename = fileInfo.fileName();
-	QUrl url = QUrl(QString("https://api.parse.com/1/files/") + filename);
-	QNetworkRequest request(url);
-	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::instance()->applicationId().toUtf8());
-	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::instance()->restApiKey().toUtf8());
-	request.setRawHeader(QString("Content-Type").toUtf8(), _mimeType.toUtf8());
+	QNetworkRequest request = createSaveNetworkRequest();
 
 	// Execute the request and connect the callbacks
-	QNetworkAccessManager* networkAccessManager = PFManager::instance()->networkAccessManager();
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
 	_saveReply = networkAccessManager->post(request, *(_data.data()));
 	QObject::connect(_saveReply, SIGNAL(uploadProgress(qint64, qint64)), this, SLOT(handleSaveProgressUpdated(qint64, qint64)));
 	QObject::connect(_saveReply, SIGNAL(finished()), this, SLOT(handleSaveCompleted()));
 
 	// Connect the callbacks from this object to the target actions
-	QObject::connect(this, SIGNAL(saveProgressUpdated(double)), saveProgressTarget, saveProgressAction);
+	if (saveProgressTarget != NULL)
+		QObject::connect(this, SIGNAL(saveProgressUpdated(double)), saveProgressTarget, saveProgressAction);
 	QObject::connect(this, SIGNAL(saveCompleted(bool, PFErrorPtr)), saveCompleteTarget, saveCompleteAction);
 
 	return true;
 }
 
+#pragma mark - Get Data Methods
+
 bool PFFile::isDataAvailable()
 {
 	bool isInMemory = !_data.isNull();
-	bool isInCache = QFileInfo(PFManager::instance()->cacheDirectory().filePath(_name)).isFile();
+	bool isInCache = QFileInfo(PFManager::sharedManager()->cacheDirectory().filePath(_name)).isFile();
 	return (isInMemory || isInCache);
 }
 
@@ -166,16 +318,21 @@ QByteArray* PFFile::getData()
 	// If the data is available, then we need to load it out of the cache
 	if (isDataAvailable())
 	{
-		QString filepath = PFManager::instance()->cacheDirectory().filePath(_name);
+		QString filepath = PFManager::sharedManager()->cacheDirectory().filePath(_name);
 		QFile file(filepath);
 		file.open(QIODevice::ReadOnly);
-		_data = QSharedPointer<QByteArray>(new QByteArray());
+		_data = QByteArrayPtr(new QByteArray());
 		_data->append(file.readAll());
 		file.close();
 		return _data.data();
 	}
 
 	return NULL;
+}
+
+bool PFFile::getDataInBackground(QObject *getDataCompleteTarget, const char *getDataCompleteAction)
+{
+	return getDataInBackground(NULL, "", getDataCompleteTarget, getDataCompleteAction);
 }
 
 bool PFFile::getDataInBackground(QObject *getDataProgressTarget, const char *getDataProgressAction,
@@ -191,7 +348,7 @@ bool PFFile::getDataInBackground(QObject *getDataProgressTarget, const char *get
 	// Early out if the file has already been downloaded
 	if (isDataAvailable())
 	{
-		qWarning().nospace() << "WARNING: PFFile \"" << _name << "\" is already downloaded";
+		qWarning().nospace() << "WARNING: PFFile \"" << _name << "\" is already downloaded, use PFFile::getData() method instead";
 		return false;
 	}
 
@@ -199,25 +356,28 @@ bool PFFile::getDataInBackground(QObject *getDataProgressTarget, const char *get
 	_isDownloading = true;
 
 	// Create a new temp data object to sequentially write the data into
-	_tempDownloadData = QSharedPointer<QByteArray>(new QByteArray());
+	_tempDownloadData = QByteArrayPtr(new QByteArray());
 
 	// Create a network request
 	QUrl url = QUrl(_url);
 	QNetworkRequest request(url);
 
 	// Execute the request and connect the callbacks
-	QNetworkAccessManager* networkAccessManager = PFManager::instance()->networkAccessManager();
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
 	_getDataReply = networkAccessManager->get(request);
 	QObject::connect(_getDataReply, SIGNAL(readyRead()), this, SLOT(handleGetDataReadyRead()));
 	QObject::connect(_getDataReply, SIGNAL(downloadProgress(qint64, qint64)), this, SLOT(handleGetDataProgressUpdated(qint64, qint64)));
 	QObject::connect(_getDataReply, SIGNAL(finished()), this, SLOT(handleGetDataCompleted()));
 
 	// Connect the callbacks from this object to the target actions
-	QObject::connect(this, SIGNAL(getDataProgressUpdated(double)), getDataProgressTarget, getDataProgressAction);
+	if (getDataProgressTarget != NULL)
+		QObject::connect(this, SIGNAL(getDataProgressUpdated(double)), getDataProgressTarget, getDataProgressAction);
 	QObject::connect(this, SIGNAL(getDataCompleted(QByteArray*, PFErrorPtr)), getDataCompleteTarget, getDataCompleteAction);
 
 	return true;
 }
+
+#pragma mark - Cancellation Methods
 
 void PFFile::cancel()
 {
@@ -246,38 +406,37 @@ void PFFile::cancel()
 	}
 }
 
-const QString& PFFile::filepath()
-{
-	return _filepath;
-}
-
-const QString& PFFile::name()
-{
-	return _name;
-}
-
-const QString& PFFile::url()
-{
-	return _url;
-}
-
 #pragma mark - Backend API - PFSerializable Methods
 
-void PFFile::fromJson(const QJsonObject& jsonObject)
+PFSerializablePtr PFFile::fromJson(const QJsonObject& jsonObject)
 {
 	qDebug() << "PFFile::fromJson";
-	_name = jsonObject["name"].toString();
-	_url = jsonObject["url"].toString();
+	QString name = jsonObject["name"].toString();
+	QString url = jsonObject["url"].toString();
+	PFFilePtr file = PFFile::fileWithNameAndUrl(name, url);
+	return file;
 }
 
-void PFFile::toJson(QJsonObject& jsonObject)
+bool PFFile::toJson(QJsonObject& jsonObject)
 {
 	qDebug() << "PFFile::toJson";
-	if (_name.isEmpty())
-		qFatal("PFFile::toJson could NOT convert to PFFile to JSON because the name is not set");
-	jsonObject["__type"] = QString("File");
-	jsonObject["name"] = _name;
-	jsonObject["url"] = _url;
+	if (_name.isEmpty() || _url.isEmpty())
+	{
+		qWarning() << "PFFile::toJson could NOT convert to PFFile to JSON because the name and/or url are not set";
+		return false;
+	}
+	else
+	{
+		jsonObject["__type"] = QString("File");
+		jsonObject["name"] = _name;
+		jsonObject["url"] = _url;
+		return true;
+	}
+}
+
+const QString PFFile::className() const
+{
+	return "PFFile";
 }
 
 #pragma mark - Protected Save Slots
@@ -292,27 +451,25 @@ void PFFile::handleSaveProgressUpdated(qint64 bytesSent, qint64 bytesTotal)
 
 void PFFile::handleSaveCompleted()
 {
+	// Disconnect the network access manager as well as all the connected signals to this instance
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	networkAccessManager->disconnect(this);
+	this->disconnect(SIGNAL(saveProgressUpdated(double)));
+
 	// Update our ivar
 	_isUploading = false;
 
-	// Parse the json reply
-	QJsonDocument doc = QJsonDocument::fromJson(_saveReply->readAll());
-	QJsonObject jsonObject = doc.object();
+	// Deserialize the reply
+	PFErrorPtr error;
+	bool success = deserializeSaveNetworkReply(_saveReply, error);
 
-	// Notify the target of the success or failure
-	if (_saveReply->error() == QNetworkReply::NoError) // SUCCESS
-	{
-		_url = jsonObject["url"].toString();
-		_name = jsonObject["name"].toString();
+	// Remove the dirty flag if the upload succeeded
+	if (success)
 		_isDirty = false;
-		emit saveCompleted(true, PFErrorPtr());
-	}
-	else // FAILURE
-	{
-		int errorCode = jsonObject["code"].toInt();
-		QString errorMessage = jsonObject["error"].toString();
-		emit saveCompleted(false, PFErrorPtr(new PFError(errorCode, errorMessage)));
-	}
+
+	// Emit the signal that the save has completed and then disconnect it
+	emit saveCompleted(success, error);
+	this->disconnect(SIGNAL(saveCompleted(bool, PFErrorPtr)));
 
 	// Clean up
 	_saveReply->deleteLater();
@@ -336,10 +493,15 @@ void PFFile::handleGetDataProgressUpdated(qint64 bytesSent, qint64 bytesTotal)
 
 void PFFile::handleGetDataCompleted()
 {
+	// Disconnect the network access manager as well as all the connected signals to this instance
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	networkAccessManager->disconnect(this);
+	this->disconnect(SIGNAL(getDataProgressUpdated(double)));
+
 	// Update our ivar
 	_isDownloading = false;
 
-	// Notify the target of the success or failure
+	// Extract the JSON payload
 	if (_getDataReply->error() == QNetworkReply::NoError) // SUCCESS
 	{
 		// Move the data from the temp download data object to the final data object
@@ -347,7 +509,7 @@ void PFFile::handleGetDataCompleted()
 		_tempDownloadData.clear();
 
 		// Write the data out to the cache
-		QString filepath = PFManager::instance()->cacheDirectory().filePath(_name);
+		QString filepath = PFManager::sharedManager()->cacheDirectory().filePath(_name);
 		QFile file(filepath);
 		file.open(QIODevice::WriteOnly);
 		file.write(*(_data.data()));
@@ -359,33 +521,53 @@ void PFFile::handleGetDataCompleted()
 	{
 		int errorCode = kPFErrorFileDownloadConnectionFailed;
 		QString errorMessage = "File download connection failed";
-		emit getDataCompleted(NULL, PFErrorPtr(new PFError(errorCode, errorMessage)));
+		emit getDataCompleted(NULL, PFError::errorWithCodeAndMessage(errorCode, errorMessage));
 	}
+
+	// Disconnect the save completed signal
+	this->disconnect(SIGNAL(getDataCompleted(QByteArray*, PFErrorPtr)));
 
 	// Clean up
 	_getDataReply->deleteLater();
 }
 
-#pragma mark - Protected Methods
+#pragma mark - Network Request Builder Methods
 
-QString PFFile::convertExtensionToMimeType(const QString& extension)
+QNetworkRequest PFFile::createSaveNetworkRequest()
 {
-	if (extension == "json")
-		return "application/json";
-	else if (extension == "pdf")
-		return "application/pdf";
-	else if (extension == "xml")
-		return "application/xml";
-	else if (extension == "zip")
-		return "application/zip";
-	else if (extension == "jpg" || extension == "jpeg")
-		return "image/jpeg";
-	else if (extension == "png")
-		return "image/png";
-	else if (extension == "txt")
-		return "text/plain";
-	else
-		return "";
+	QUrl url = QUrl(QString("https://api.parse.com/1/files/") + _name);
+	QNetworkRequest request(url);
+	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
+	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
+	request.setRawHeader(QString("Content-Type").toUtf8(), _mimeType.toUtf8());
+
+	return request;
+}
+
+#pragma mark - Network Reply Deserialization Methods
+
+bool PFFile::deserializeSaveNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error)
+{
+	// Parse the json reply
+	QJsonDocument doc = QJsonDocument::fromJson(networkReply->readAll());
+	QJsonObject jsonObject = doc.object();
+
+	// Extract the JSON payload
+	if (networkReply->error() == QNetworkReply::NoError) // SUCCESS
+	{
+		_url = jsonObject["url"].toString();
+		_name = jsonObject["name"].toString();
+
+		return true;
+	}
+	else // FAILURE
+	{
+		int errorCode = jsonObject["code"].toInt();
+		QString errorMessage = jsonObject["error"].toString();
+		error = PFError::errorWithCodeAndMessage(errorCode, errorMessage);
+
+		return false;
+	}
 }
 
 }	// End of parse namespace

@@ -10,40 +10,16 @@
 #define PARSE_PFFILE_H
 
 // Parse headers
-#include <Parse/PFError.h>
-#include <Parse/PFSerializable.h>
+#include "PFSerializable.h"
 
 // Qt headers
 #include <QFile>
 #include <QNetworkReply>
-#include <QSharedPointer>
 #include <QString>
 
 namespace parse {
 
-// Typedefs
-class PFFile;
-typedef QSharedPointer<PFFile> PFFilePtr;
-
-/**
- * USE CASES
- *
- * Saving Data:
- *    1. I want to upload a file in which I will call save
- *    2. Probably will need to be able to verify is has been saved into the cloud (isDirty() method)
- *    3. I will then want to attach that file to objects for associate then saving (toJSON() method)
- *
- * Getting Data:
- *    1. I will want to find out whether the data is available (is it cached)
- *    2. If not, then I will want to fetch it
- *    3. Once fetched, I will want to be able to access the data directly
- *
- * Cancelling Active Process:
- *    1. User may want to cancel an upload
- *    2. User may want to cacnel a download
- */
-
-class PFFile : public QObject, public PFSerializable
+class PFFile : public PFSerializable
 {
 	Q_OBJECT
 
@@ -53,86 +29,77 @@ public:
 	//                                  USER API
 	//=================================================================================
 
-	/**
-	 * Constructor.
-	 * Use to save data to server.
-	 */
-	PFFile(const QString& filepath);
+	// Creation Methods for Upload
+	static PFFilePtr fileWithData(QByteArrayPtr data);
+	static PFFilePtr fileWithNameAndData(const QString& name, QByteArrayPtr data);
+	static PFFilePtr fileWithNameAndContentsAtPath(const QString& name, const QString& filepath);
+	static PFFilePtr fileFromVariant(const QVariant& variant);
 
-	/**
-	 * Constructor.
-	 * Use to get data from cache or server.
-	 */
-	PFFile(const QString& name, const QString& url);
+	// Creation Methods for Download
+	static PFFilePtr fileWithNameAndUrl(const QString& name, const QString& url);
 
-	/** Destructor. */
-	~PFFile();
+	// Getter Methods
+	const QString& filepath();
+	const QString& name();
+	const QString& url();
 
-	/** Helper method for creating a QVariant with a PFFilePtr object. */
-	static QVariant variantWithFile(const PFFilePtr& file);
-
-	/**
-	 * Returns whether the data has been saved to the server.
-	 * @return True if the data has been saved to the server, false otherwise.
-	 */
+	// Returns whether the data has been saved to the server
 	bool isDirty();
 
-	bool save();
+	////////////////////////////////
+	//       Save Methods
+	////////////////////////////////
 
-	/**
-	 * Saves the data asynchronously to the server.
-	 * @param saveProgressTarget The target to be notified when the save progress changes.
-	 * @param saveProgressAction The slot to be notified when the save progress changes - SLOT(saveProgressUpdated(double)).
-	 * @param saveCompleteTarget The target to be notified when the save completes.
-	 * @param saveCompleteAction The slot to be notified when the save completes - SLOT(saveCompleted(bool, PFErrorPtr)).
-	 * @return True if the async save process was started, false otherwise.
-	 */
+	// Saves the data synchronously to the server
+	bool save();
+	bool save(PFErrorPtr& error);
+
+	// Saves the data asynchronously to the server (use the second method for receiving progress updates).
+	//   @param saveProgressTarget The target to be notified when the save progress changes.
+	//   @param saveProgressAction The slot to be notified when the save progress changes - SLOT(saveProgressUpdated(double)).
+	//   @param saveCompleteTarget The target to be notified when the save completes.
+	//   @param saveCompleteAction The slot to be notified when the save completes - SLOT(saveCompleted(bool, PFErrorPtr)).
+	//   @return True if the async save process was started, false otherwise.
+	bool saveInBackground(QObject *saveCompleteTarget, const char *saveCompleteAction);
 	bool saveInBackground(QObject *saveProgressTarget, const char *saveProgressAction, QObject *saveCompleteTarget, const char *saveCompleteAction);
 
-	/**
-	 * Returns whether the data is available in memory or in the cache.
-	 * NOTE: if it is not available, then it needs to be downloaded from the server.
-	 * @return True if the data is available in memory or in the cache, false otherwise.
-	 */
+	////////////////////////////////
+	//     Get Data Methods
+	////////////////////////////////
+
+	// Returns whether the data is available in memory or in the cache.
+	// NOTE: if it is not available, then it needs to be downloaded from the server.
 	bool isDataAvailable();
 
-	/**
-	 * Gets the data from memory or from the cache.
-	 * NOTE: if the data is not available, then this method returns NULL. If this happens,
-	 * then use the getDataInBackground() method to download the data from the server.
-	 * @return The data from memory or from the cache.
-	 */
+	// Gets the data from memory or from the cache.
+	// NOTE: if the data is not available, then this method returns NULL. If this happens,
+	// then use the getDataInBackground() method to download the data from the server.
 	QByteArray* getData();
 
-	/**
-	 * Gets the data from the server, saves it to the cache then delivers the data to the target slot.
-	 * @param getDataProgressTarget The target to be notified when the get data progress changes.
-	 * @param getDataProgressAction The slot to be notified when the get data progress changes - SLOT(getDataProgressUpdated(double)).
-	 * @param getDataCompleteTarget The target to be notified when the get data completes.
-	 * @param getDataCompleteAction The slot to be notified when the get data completes - SLOT(getDataCompleted(bool, PFErrorPtr)).
-	 * @return True if the async get data process was started, false otherwise.
-	 */
+	// Gets the data from the server, saves it to the cache then delivers the data to the target slot.
+	//   @param getDataProgressTarget The target to be notified when the get data progress changes.
+	//   @param getDataProgressAction The slot to be notified when the get data progress changes - SLOT(getDataProgressUpdated(double)).
+	//   @param getDataCompleteTarget The target to be notified when the get data completes.
+	//   @param getDataCompleteAction The slot to be notified when the get data completes - SLOT(getDataCompleted(bool, PFErrorPtr)).
+	//   @return True if the async get data process was started, false otherwise.
+	bool getDataInBackground(QObject *getDataCompleteTarget, const char *getDataCompleteAction);
 	bool getDataInBackground(QObject *getDataProgressTarget, const char *getDataProgressAction, QObject *getDataCompleteTarget, const char *getDataCompleteAction);
 
-	/** Cancels the current request (whether uploading or downloading the file data. */
+	////////////////////////////////
+	//       Cancellation
+	////////////////////////////////
+
+	// Cancels the current request (whether uploading or downloading the file data
 	void cancel();
-
-	/** Returns the filepath of the original file data. */
-	const QString& filepath();
-
-	/** Returns the name of the file stored on the server. */
-	const QString& name();
-
-	/** Returns the url of the file stored on the server. */
-	const QString& url();
 
 	//=================================================================================
 	//                                BACKEND API
 	//=================================================================================
 
 	// PFSerializable Methods
-	void fromJson(const QJsonObject& jsonObject);
-	void toJson(QJsonObject& jsonObject);
+	virtual PFSerializablePtr fromJson(const QJsonObject& jsonObject);
+	virtual bool toJson(QJsonObject& jsonObject);
+	virtual const QString className() const;
 
 protected slots:
 
@@ -157,20 +124,28 @@ signals:
 
 protected:
 
-	QString convertExtensionToMimeType(const QString& extension);
+	// Constructor / Destructor
+	PFFile();
+	~PFFile();
 
-	/** Instance members. */
-	QString							_filepath;
-	QString							_mimeType;
-	QString							_name;
-	QString							_url;
-	QSharedPointer<QByteArray>		_data;
-	QSharedPointer<QByteArray>		_tempDownloadData;
-	bool							_isDirty;
-	bool							_isUploading;
-	bool							_isDownloading;
-	QNetworkReply*					_saveReply;
-	QNetworkReply*					_getDataReply;
+	// Network Request Builder Methods
+	QNetworkRequest createSaveNetworkRequest();
+
+	// Network Reply Deserialization Methods
+	bool deserializeSaveNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
+
+	// Instance members
+	QString				_filepath;
+	QString				_mimeType;
+	QString				_name;
+	QString				_url;
+	QByteArrayPtr		_data;
+	QByteArrayPtr		_tempDownloadData;
+	bool				_isDirty;
+	bool				_isUploading;
+	bool				_isDownloading;
+	QNetworkReply*		_saveReply;
+	QNetworkReply*		_getDataReply;
 };
 
 }	// End of parse namespace
