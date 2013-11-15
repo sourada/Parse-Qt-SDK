@@ -295,7 +295,8 @@ bool PFObject::deleteObject(PFErrorPtr& error)
 
 	// Update the ivars
 	_isDeleting = false;
-	_objectId = "";
+	if (success)
+		_objectId = "";
 
 	// Clean up
 	networkReply->deleteLater();
@@ -483,7 +484,8 @@ void PFObject::handleDeleteObjectCompleted(QNetworkReply* networkReply)
 
 	// Update the ivars
 	_isDeleting = false;
-	_objectId = "";
+	if (success)
+		_objectId = "";
 
 	// Emit the signal that the delete object has completed and then disconnect it
 	emit deleteObjectCompleted(success, error);
