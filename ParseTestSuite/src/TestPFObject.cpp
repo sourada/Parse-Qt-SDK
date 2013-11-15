@@ -69,14 +69,6 @@ private slots:
 		currentDir.cdUp();
 		_dataPath = currentDir.absoluteFilePath("data");
 
-		// Reset the callback flags
-		_saveSucceeded = false;
-		_saveError = PFErrorPtr();
-		_deleteObjectSucceeded = false;
-		_deleteObjectError = PFErrorPtr();
-		_fetchSucceeded = false;
-		_fetchError = PFErrorPtr();
-
 		// Build the object graph for testing
 		buildObjectGraph();
 	}
@@ -91,6 +83,17 @@ private slots:
 	{
 		// Reset the default ACL
 		PFACL::setDefaultACLWithAccessForCurrentUser(PFACLPtr(), false);
+
+		// Reset the callback flags
+		_saveSucceeded = false;
+		_saveError = PFErrorPtr();
+		_deleteObjectSucceeded = false;
+		_deleteObjectError = PFErrorPtr();
+		_fetchSucceeded = false;
+		_fetchError = PFErrorPtr();
+
+		// Make sure we're completely disconnect from anything
+		this->disconnect();
 	}
 
 	void cleanup()
@@ -129,10 +132,18 @@ private slots:
 	void test_deleteObjectWithError();
 	void test_deleteObjectInBackground();
 
+	// Data Availability Methods
+	void test_isDataAvailable();
+
 	// Fetch Methods
 	void test_fetch();
 	void test_fetchWithError();
 	void test_fetchInBackground();
+
+	// Fetch If Needed Methods
+	void test_fetchIfNeeded();
+	void test_fetchIfNeededWithError();
+	void test_fetchIfNeededInBackground();
 
 	// PFSerializable Methods
 	void test_fromJson();
@@ -1316,6 +1327,23 @@ void TestPFObject::test_deleteObjectInBackground()
 	QCOMPARE(_deleteObjectError.isNull(), true);
 }
 
+void TestPFObject::test_isDataAvailable()
+{
+	// Case 1 - new object returns true
+	PFObjectPtr newObject = PFObject::objectWithClassName("NiceAndShiny");
+	QCOMPARE(newObject->isDataAvailable(), true);
+
+	// Case 2 - fetched object returns true
+	PFObjectPtr axe = PFObject::objectWithClassName(_axe->parseClassName(), _axe->objectId());
+	QCOMPARE(axe->isDataAvailable(), false);
+	QCOMPARE(axe->fetch(), true);
+	QCOMPARE(axe->isDataAvailable(), true);
+
+	// Case 3 - an unfetched object with an object id returns false
+	PFObjectPtr fakeObject = PFObject::objectWithClassName("Faker", "s34af34a3f");
+	QCOMPARE(fakeObject->isDataAvailable(), false);
+}
+
 void TestPFObject::test_fetch()
 {
 	//================================================================
@@ -1660,6 +1688,96 @@ void TestPFObject::test_fetchInBackground()
 	QCOMPARE(greaves->objectForKey("defense").toInt(), 26);
 	QCOMPARE(helmet->objectForKey("name").toString(), QString("Helmet"));
 	QCOMPARE(helmet->objectForKey("defense").toInt(), 121);
+}
+
+void TestPFObject::test_fetchIfNeeded()
+{
+	// Case 1 - new object won't fetch
+	PFObjectPtr newObject = PFObject::objectWithClassName("NiceAndShiny");
+	QCOMPARE(newObject->isDataAvailable(), true);
+	QCOMPARE(newObject->fetchIfNeeded(), false);
+	QCOMPARE(newObject->isDataAvailable(), true);
+
+	// Case 2 - server object fetch if needed
+	PFObjectPtr axe = PFObject::objectWithClassName(_axe->parseClassName(), _axe->objectId());
+	QCOMPARE(axe->isDataAvailable(), false);
+	QCOMPARE(axe->fetchIfNeeded(), true);
+	QCOMPARE(axe->isDataAvailable(), true);
+	QCOMPARE(axe->fetchIfNeeded(), false);
+	QCOMPARE(axe->objectForKey("weaponClass").toString(), QString("Axe"));
+
+	// Case 3 - fake object will fail in the fetch
+	PFObjectPtr fakeObject = PFObject::objectWithClassName("Faker", "s34af34a3f");
+	QCOMPARE(fakeObject->isDataAvailable(), false);
+	QCOMPARE(fakeObject->fetchIfNeeded(), false);
+}
+
+void TestPFObject::test_fetchIfNeededWithError()
+{
+	// Case 1 - new object won't fetch
+	PFObjectPtr newObject = PFObject::objectWithClassName("NiceAndShiny");
+	QCOMPARE(newObject->isDataAvailable(), true);
+	PFErrorPtr newObjectFetchError;
+	QCOMPARE(newObject->fetchIfNeeded(newObjectFetchError), false);
+	QCOMPARE(newObjectFetchError.isNull(), true);
+	QCOMPARE(newObject->isDataAvailable(), true);
+
+	// Case 2 - server object fetch if needed
+	PFObjectPtr axe = PFObject::objectWithClassName(_axe->parseClassName(), _axe->objectId());
+	QCOMPARE(axe->isDataAvailable(), false);
+	PFErrorPtr axeFetchError;
+	QCOMPARE(axe->fetchIfNeeded(axeFetchError), true);
+	QCOMPARE(axeFetchError.isNull(), true);
+	QCOMPARE(axe->isDataAvailable(), true);
+	PFErrorPtr axeFetchError2;
+	QCOMPARE(axe->fetchIfNeeded(axeFetchError2), false);
+	QCOMPARE(axeFetchError2.isNull(), true);
+	QCOMPARE(axe->objectForKey("weaponClass").toString(), QString("Axe"));
+
+	// Case 3 - fake object will fail in the fetch
+	PFObjectPtr fakeObject = PFObject::objectWithClassName("Faker", "s34af34a3f");
+	QCOMPARE(fakeObject->isDataAvailable(), false);
+	PFErrorPtr fakeObjectFetchError;
+	QCOMPARE(fakeObject->fetchIfNeeded(fakeObjectFetchError), false);
+	QCOMPARE(fakeObjectFetchError.isNull(), false);
+	QCOMPARE(fakeObjectFetchError->errorCode(), kPFErrorObjectNotFound);
+}
+
+void TestPFObject::test_fetchIfNeededInBackground()
+{
+	// Use an event loop to block until we receive the completion
+	QEventLoop eventLoop;
+	QObject::connect(this, SIGNAL(fetchEnded()), &eventLoop, SLOT(quit()));
+
+	// Case 1 - new object won't fetch
+	PFObjectPtr newObject = PFObject::objectWithClassName("NiceAndShiny");
+	QCOMPARE(newObject->isDataAvailable(), true);
+	QCOMPARE(newObject->fetchIfNeededInBackground(this, SLOT(fetchCompleted(bool, PFErrorPtr))), false);
+	QCOMPARE(newObject->isDataAvailable(), true);
+
+	// Case 2 - server object fetch if needed
+	PFObjectPtr axe = PFObject::objectWithClassName(_axe->parseClassName(), _axe->objectId());
+	QCOMPARE(axe->isDataAvailable(), false);
+	QCOMPARE(axe->fetchIfNeededInBackground(this, SLOT(fetchCompleted(bool, PFErrorPtr))), true);
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_fetchSucceeded, true);
+	QCOMPARE(_fetchError.isNull(), true);
+	_fetchSucceeded = false;
+	_fetchError = PFErrorPtr();
+	QCOMPARE(axe->isDataAvailable(), true);
+
+	// Re-fetch will fail since the data is now available
+	QCOMPARE(axe->fetchIfNeededInBackground(this, SLOT(fetchCompleted(bool, PFErrorPtr))), false);
+	QCOMPARE(axe->objectForKey("weaponClass").toString(), QString("Axe"));
+
+	// Case 3 - fake object will fail in the fetch
+	PFObjectPtr fakeObject = PFObject::objectWithClassName("Faker", "s34af34a3f");
+	QCOMPARE(fakeObject->isDataAvailable(), false);
+	QCOMPARE(fakeObject->fetchIfNeededInBackground(this, SLOT(fetchCompleted(bool, PFErrorPtr))), true);
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_fetchSucceeded, false);
+	QCOMPARE(_fetchError.isNull(), false);
+	QCOMPARE(_fetchError->errorCode(), kPFErrorObjectNotFound);
 }
 
 void TestPFObject::test_fromJson()

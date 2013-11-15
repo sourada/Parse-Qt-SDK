@@ -328,6 +328,16 @@ bool PFObject::deleteObjectInBackground(QObject *deleteObjectCompleteTarget, con
 	return true;
 }
 
+#pragma mark - Data Availibility Methods
+
+bool PFObject::isDataAvailable()
+{
+	if (_objectId.isEmpty() || _fetched)
+		return true;
+
+	return false;
+}
+
 #pragma mark - Fetch Methods
 
 bool PFObject::fetch()
@@ -372,7 +382,8 @@ bool PFObject::fetch(PFErrorPtr& error)
 
 	// Update the ivars
 	_isFetching = false;
-	_fetched = true;
+	if (success)
+		_fetched = true;
 
 	// Clean up
 	networkReply->deleteLater();
@@ -409,6 +420,30 @@ bool PFObject::fetchInBackground(QObject *fetchCompleteTarget, const char *fetch
 	QObject::connect(this, SIGNAL(fetchCompleted(bool, PFErrorPtr)), fetchCompleteTarget, fetchCompleteAction);
 
 	return true;
+}
+
+#pragma mark - Fetch If Needed Methods
+
+bool PFObject::fetchIfNeeded()
+{
+	PFErrorPtr error;
+	return fetchIfNeeded(error);
+}
+
+bool PFObject::fetchIfNeeded(PFErrorPtr& error)
+{
+	if (isDataAvailable())
+		return false;
+	else
+		return fetch(error);
+}
+
+bool PFObject::fetchIfNeededInBackground(QObject *fetchCompleteTarget, const char *fetchCompleteAction)
+{
+	if (isDataAvailable())
+		return false;
+	else
+		return fetchInBackground(fetchCompleteTarget, fetchCompleteAction);
 }
 
 #pragma mark - PFSerializable Methods
@@ -506,7 +541,8 @@ void PFObject::handleFetchCompleted(QNetworkReply* networkReply)
 
 	// Update the ivars
 	_isFetching = false;
-	_fetched = true;
+	if (success)
+		_fetched = true;
 
 	// Emit the signal that the delete object has completed and then disconnect it
 	emit fetchCompleted(success, error);

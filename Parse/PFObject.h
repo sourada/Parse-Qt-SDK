@@ -59,10 +59,20 @@ public:
 	bool deleteObject(PFErrorPtr& error);
 	bool deleteObjectInBackground(QObject *deleteObjectCompleteTarget, const char *deleteObjectCompleteAction);
 
+	// Returns true if new or has been fetched, false otherwise
+	bool isDataAvailable();
+
 	// Fetch Methods - fetchCompleteAction signature: (bool succeeded, PFErrorPtr error)
 	bool fetch();
 	bool fetch(PFErrorPtr& error);
 	bool fetchInBackground(QObject *fetchCompleteTarget, const char *fetchCompleteAction);
+
+	// Fetch If Needed Methods - fetchCompleteAction signature: (bool succeeded, PFErrorPtr error)
+	// Returns true if a fetch was actually started, false otherwise. Also, these methods only
+	// execute a fetch from the server if isDataAvailable() is false.
+	bool fetchIfNeeded();
+	bool fetchIfNeeded(PFErrorPtr& error);
+	bool fetchIfNeededInBackground(QObject *fetchCompleteTarget, const char *fetchCompleteAction);
 
 	//=================================================================================
 	//                                BACKEND API
