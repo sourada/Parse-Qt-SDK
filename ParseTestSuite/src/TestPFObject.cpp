@@ -54,6 +54,10 @@ private slots:
 	// Class init and cleanup methods
 	void initTestCase()
 	{
+		// Make sure the default ACL is reset
+		PFACL::setDefaultACLWithAccessForCurrentUser(PFACLPtr(), false);
+
+		// Make sure we're logged out
 		PFUser::logOut();
 
 		// Build some default data for a file

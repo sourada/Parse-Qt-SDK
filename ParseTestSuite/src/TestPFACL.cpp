@@ -125,8 +125,8 @@ void TestPFACL::test_ACLWithUser()
 void TestPFACL::test_setDefaultACLWithAccessForCurrentUser()
 {
 	// Untestable method - can only call it
-	PFACL::setDefaultACLWithAccessForCurrentUser(PFACL::ACL(), false);
 	PFACL::setDefaultACLWithAccessForCurrentUser(PFACL::ACL(), true);
+	PFACL::setDefaultACLWithAccessForCurrentUser(PFACL::ACL(), false);
 }
 
 void TestPFACL::test_setPublicReadAccess()
