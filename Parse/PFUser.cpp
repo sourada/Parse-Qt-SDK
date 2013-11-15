@@ -36,6 +36,7 @@ PFUser::PFUser() : PFObject(),
 	_sessionToken("")
 {
 	qDebug().nospace() << "Created PFUser(" << QString().sprintf("%8p", this) << ")";
+	_parseClassName = "_User";
 }
 
 PFUser::~PFUser()
@@ -53,6 +54,15 @@ PFUserPtr PFUser::currentUser()
 PFUserPtr PFUser::user()
 {
 	return PFUserPtr(new PFUser(), &QObject::deleteLater);
+}
+
+PFUserPtr PFUser::userFromVariant(const QVariant& variant)
+{
+	PFSerializablePtr serializable = PFSerializable::fromVariant(variant);
+	if (!serializable.isNull())
+		return serializable.objectCast<PFUser>();
+
+	return PFUserPtr();
 }
 
 #pragma mark - Public Accessor Methods
@@ -286,17 +296,16 @@ void PFUser::requestPasswordResetForEmailInBackground(const QString& email, QObj
 
 #pragma mark - PFSerializable Methods
 
-PFSerializablePtr PFUser::fromJson(const QJsonObject& jsonObject)
+QVariant PFUser::fromJson(const QJsonObject& jsonObject)
 {
-	qDebug() << "PFUser::fromJson";
 	PFUserPtr user = PFUser::user();
 	user->_objectId = jsonObject["objectId"].toString();
-	return user;
+
+	return PFSerializable::toVariant(user);
 }
 
 bool PFUser::toJson(QJsonObject& jsonObject)
 {
-	qDebug() << "PFUser::toJson";
 	if (_objectId.isEmpty())
 	{
 		qWarning() << "PFFile::toJson could NOT convert to PFUser to JSON because the objectId is not set";
@@ -305,7 +314,7 @@ bool PFUser::toJson(QJsonObject& jsonObject)
 	else
 	{
 		jsonObject["__type"] = QString("Pointer");
-		jsonObject["className"] = QString("_User");
+		jsonObject["className"] = _parseClassName;
 		jsonObject["objectId"] = _objectId;
 		return true;
 	}
@@ -475,6 +484,16 @@ QNetworkRequest PFUser::createDeleteObjectNetworkRequest()
 	return request;
 }
 
+QNetworkRequest PFUser::createFetchNetworkRequest()
+{
+	QUrl url = QUrl(QString("https://api.parse.com/1/users/") + _objectId);
+	QNetworkRequest request(url);
+	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
+	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
+
+	return request;
+}
+
 #pragma mark - Protected Network Reply Deserialization Methods
 
 bool PFUser::deserializeSignUpNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error)
@@ -556,6 +575,26 @@ bool PFUser::deserializePasswordResetNetworkReply(QNetworkReply* networkReply, P
 	}
 
 	return false;
+}
+
+bool PFUser::deserializeFetchNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error)
+{
+	// Use the default PFObject deserialization for the fetch reply
+	bool success = PFObject::deserializeFetchNetworkReply(networkReply, error);
+
+	// If it succeeded, let's extract the username and email properties
+	if (success)
+	{
+		// Manually set the username and remove from the child objects map
+		if (_childObjects.contains("username"))
+			_username = _childObjects.take("username").toString();
+
+		// Manually set the email and remove from the child objects map
+		if (_childObjects.contains("email"))
+			_email = _childObjects.take("email").toString();
+	}
+
+	return success;
 }
 
 }	// End of parse namespace

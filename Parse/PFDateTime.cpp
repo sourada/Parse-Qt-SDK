@@ -84,17 +84,15 @@ const QDateTime& PFDateTime::dateTime() const
 
 #pragma mark - PFSerializable Methods
 
-PFSerializablePtr PFDateTime::fromJson(const QJsonObject& jsonObject)
+QVariant PFDateTime::fromJson(const QJsonObject& jsonObject)
 {
-	qDebug() << "PFDateTime::fromJson";
 	QString parseDateString = jsonObject["iso"].toString();
 	PFDateTimePtr dateTime = PFDateTime::dateTimeFromParseString(parseDateString);
-	return dateTime;
+	return PFSerializable::toVariant(dateTime);
 }
 
 bool PFDateTime::toJson(QJsonObject& jsonObject)
 {
-	qDebug() << "PFDateTime::toJson";
 	jsonObject["__type"] = QString("Date");
 	jsonObject["iso"] = toParseString();
 	return true;

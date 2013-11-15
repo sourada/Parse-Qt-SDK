@@ -29,6 +29,7 @@ public:
 
 	// Creation Methods
 	static PFUserPtr user();
+	static PFUserPtr userFromVariant(const QVariant& variant);
 
 	// Returns the currently authenticated user (NULL if the user isn't logged in)
 	static PFUserPtr currentUser(); // Only returns a valid user when authenticated
@@ -99,7 +100,7 @@ public:
 	//=================================================================================
 
 	// PFSerializable Methods
-	virtual PFSerializablePtr fromJson(const QJsonObject& jsonObject);
+	static QVariant fromJson(const QJsonObject& jsonObject);
 	virtual bool toJson(QJsonObject& jsonObject);
 	virtual const QString className() const;
 
@@ -131,11 +132,13 @@ protected:
 	// Network Request Builder Methods - PFObject Overrides
 	virtual void createSaveNetworkRequest(QNetworkRequest& request, QByteArray& data);
 	virtual QNetworkRequest createDeleteObjectNetworkRequest();
+	virtual QNetworkRequest createFetchNetworkRequest();
 
 	// Network Reply Deserialization Methods
 	bool deserializeSignUpNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 	bool deserializeLogInNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 	bool deserializePasswordResetNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
+	virtual bool deserializeFetchNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 
 	// Instance members
 	QString			_username;

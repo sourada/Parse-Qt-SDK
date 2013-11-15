@@ -41,7 +41,7 @@ public:
 	//=================================================================================
 
 	// PFSerializable Methods
-	virtual PFSerializablePtr fromJson(const QJsonObject& jsonObject);
+	static QVariant fromJson(const QJsonObject& jsonObject);
 	virtual bool toJson(QJsonObject& jsonObject);
 	virtual const QString className() const;
 

@@ -305,18 +305,16 @@ bool PFACL::writeAccessForUser(PFUserPtr user)
 
 #pragma mark - PFSerializable Methods
 
-PFSerializablePtr PFACL::fromJson(const QJsonObject& jsonObject)
+QVariant PFACL::fromJson(const QJsonObject &jsonObject)
 {
-	qDebug() << "PFACL::fromJson";
 	PFACLPtr ACL = PFACL::ACL();
 	ACL->_properties = jsonObject.toVariantMap();
 
-	return ACL;
+	return PFSerializable::toVariant(ACL);
 }
 
 bool PFACL::toJson(QJsonObject& jsonObject)
 {
-	qDebug() << "PFACL::toJson";
 	jsonObject = QJsonObject::fromVariantMap(_properties);
 	return true;
 }

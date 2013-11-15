@@ -408,28 +408,26 @@ void PFFile::cancel()
 
 #pragma mark - Backend API - PFSerializable Methods
 
-PFSerializablePtr PFFile::fromJson(const QJsonObject& jsonObject)
+QVariant PFFile::fromJson(const QJsonObject& jsonObject)
 {
-	qDebug() << "PFFile::fromJson";
 	QString name = jsonObject["name"].toString();
 	QString url = jsonObject["url"].toString();
 	PFFilePtr file = PFFile::fileWithNameAndUrl(name, url);
-	return file;
+
+	return PFSerializable::toVariant(file);
 }
 
 bool PFFile::toJson(QJsonObject& jsonObject)
 {
-	qDebug() << "PFFile::toJson";
-	if (_name.isEmpty() || _url.isEmpty())
+	if (isDirty())
 	{
-		qWarning() << "PFFile::toJson could NOT convert to PFFile to JSON because the name and/or url are not set";
+		qWarning() << "PFFile::toJson could NOT convert to PFFile to JSON because the file is dirty and needs to be uploaded";
 		return false;
 	}
 	else
 	{
 		jsonObject["__type"] = QString("File");
 		jsonObject["name"] = _name;
-		jsonObject["url"] = _url;
 		return true;
 	}
 }

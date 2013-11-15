@@ -36,10 +36,18 @@ public slots:
 		emit deleteObjectEnded();
 	}
 
+	void fetchCompleted(bool succeeded, PFErrorPtr error)
+	{
+		_fetchSucceeded = succeeded;
+		_fetchError = error;
+		emit fetchEnded();
+	}
+
 signals:
 
 	void saveEnded();
 	void deleteObjectEnded();
+	void fetchEnded();
 
 private slots:
 
@@ -62,11 +70,16 @@ private slots:
 		_saveError = PFErrorPtr();
 		_deleteObjectSucceeded = false;
 		_deleteObjectError = PFErrorPtr();
+		_fetchSucceeded = false;
+		_fetchError = PFErrorPtr();
+
+		// Build the object graph for testing
+		buildObjectGraph();
 	}
 
 	void cleanupTestCase()
 	{
-		// No-op
+		deleteObjectGraph();
 	}
 
 	// Function init and cleanup methods (called before/after each test)
@@ -112,12 +125,173 @@ private slots:
 	void test_deleteObjectWithError();
 	void test_deleteObjectInBackground();
 
+	// Fetch Methods
+	void test_fetch();
+	void test_fetchWithError();
+	void test_fetchInBackground();
+
 	// PFSerializable Methods
 	void test_fromJson();
 	void test_toJson();
 	void test_className();
 
 private:
+
+	void buildObjectGraph()
+	{
+		/**
+		 * Objects
+		 *
+		 *   - PFUser (testUser)
+		 *   - PFDateTime (expirationDate)
+		 *   - PFObject (Character) - sidekick, hero
+		 *   - PFObject (Armor) - greaves, helmet
+		 *   - PFObject (Weapon) - axe, sword
+		 *   - PFFile (tutorialFile)
+		 *   - PFACL (acl)
+		 *
+		 * Object Graph
+		 *
+		 *   - hero
+		 *       | - name (QString)
+		 *       | - characterType (QString)
+		 *       | - power (int)
+		 *       | - sidekick (PFObject)
+		 *       | - ACL (PFACL)
+		 *       | - tutorialFile (PFFile)
+		 *       | - weapons (array)
+		 *       |       | - axe (PFObject)
+		 *       |       | - sword (PFObject)
+		 *       |
+		 *       | - armor (map)
+		 *               | - greaves (PFObject)
+		 *               | - helmet (PFObject)
+		 *
+		 *   - sidekick
+		 *       | - name (QString)
+		 *       | - characterType (QString)
+		 *       | - power (int)
+		 *
+		 *   - axe
+		 *       | - name (QString)
+		 *       | - attackMin (int)
+		 *       | - attackMax (int)
+		 *       | - strengthRequired (int)
+		 *
+		 *   - sword
+		 *       | - name (QString)
+		 *       | - attackMin (int)
+		 *       | - attackMax (int)
+		 *       | - strengthRequired (int)
+		 *
+		 *   - greaves
+		 *       | - name (QString)
+		 *       | - defense (int)
+		 *
+		 *   - helmet
+		 *       | - name (QString)
+		 *       | - defense (int)
+		 *
+		 */
+
+		// PFUser (testUser)
+		_testUser = PFUser::user();
+		_testUser->setUsername("TestPFObject");
+		_testUser->setEmail("TestPFObject@parse.com");
+		_testUser->setPassword("testPassword");
+		bool signedUp = PFUser::signUpWithUser(_testUser);
+		QCOMPARE(signedUp, true);
+
+		// PFObject (greaves) - Armor
+		_greaves = PFObject::objectWithClassName("Armor");
+		_greaves->setObjectForKey(QString("Greaves"), "name");
+		_greaves->setObjectForKey(26, "defense");
+		bool greavesSaved = _greaves->save();
+		QCOMPARE(greavesSaved, true);
+
+		// PFObject (helmet) - Armor
+		_helmet = PFObject::objectWithClassName("Armor");
+		_helmet->setObjectForKey(QString("Helmet"), "name");
+		_helmet->setObjectForKey(121, "defense");
+		bool helmetSaved = _helmet->save();
+		QCOMPARE(helmetSaved, true);
+
+		// PFObject (axe) - Weapon
+		_axe = PFObject::objectWithClassName("Weapon");
+		_axe->setObjectForKey(QString("Axe"), "weaponClass");
+		_axe->setObjectForKey(19, "attackMin");
+		_axe->setObjectForKey(26, "attackMax");
+		_axe->setObjectForKey(65, "strengthRequired");
+		bool axeSaved = _axe->save();
+		QCOMPARE(axeSaved, true);
+
+		// PFObject (sword) - Weapon
+		_sword = PFObject::objectWithClassName("Weapon");
+		_sword->setObjectForKey(QString("Sword"), "weaponClass");
+		_sword->setObjectForKey(13, "attackMin");
+		_sword->setObjectForKey(15, "attackMax");
+		_sword->setObjectForKey(29, "strengthRequired");
+		bool swordSaved = _sword->save();
+		QCOMPARE(swordSaved, true);
+
+		// PFFile (tutorialFile)
+		QByteArrayPtr data = QByteArrayPtr(new QByteArray(QString("The Diablo Tutorial Guide, Part I").toUtf8()));
+		_tutorialFile = PFFile::fileWithData(data);
+		bool tutorialFileSaved = _tutorialFile->save();
+		QCOMPARE(tutorialFileSaved, true);
+
+		// PFACL (acl)
+		PFACLPtr acl = PFACL::ACL();
+		acl->setPublicReadAccess(true);
+		acl->setPublicWriteAccess(true);
+
+		// PFDateTime (expirationDate)
+		_expirationDate = PFDateTime::dateTimeFromDateTime(QDateTime::currentDateTime());
+
+		// PFObject (sidekick) - Character
+		_sidekick = PFObject::objectWithClassName("Character");
+		_sidekick->setObjectForKey(QString("Menalous"), "name");
+		_sidekick->setObjectForKey(QString("Sidekick"), "characterType");
+		_sidekick->setObjectForKey(24, "power");
+		bool sidekickSaved = _sidekick->save();
+		QCOMPARE(sidekickSaved, true);
+
+		// Weapons List
+		QVariantList weapons;
+		weapons << PFObject::toVariant(_axe) << PFObject::toVariant(_sword);
+
+		// Armor Map
+		QVariantMap armor;
+		armor["helmet"] = PFObject::toVariant(_helmet);
+		armor["greaves"] = PFObject::toVariant(_greaves);
+
+		// PFObject (hero) - Character
+		_hero = PFObject::objectWithClassName("Character");
+		_hero->setObjectForKey(QString("Hercules"), "name");
+		_hero->setObjectForKey(QString("Hero"), "characterType");
+		_hero->setObjectForKey(80, "power");
+		_hero->setACL(acl);
+		_hero->setObjectForKey(_expirationDate, "expirationDate");
+		_hero->setObjectForKey(_tutorialFile, "tutorialFile");
+		_hero->setObjectForKey(_sidekick, "sidekick");
+		_hero->setObjectForKey(_testUser, "accountOwner");
+		_hero->setObjectForKey(weapons, "weapons");
+		_hero->setObjectForKey(armor, "armor");
+		bool heroSaved = _hero->save();
+		QCOMPARE(heroSaved, true);
+	}
+
+	void deleteObjectGraph()
+	{
+		// Cleanup
+		QCOMPARE(_testUser->deleteObject(), true);
+		QCOMPARE(_greaves->deleteObject(), true);
+		QCOMPARE(_helmet->deleteObject(), true);
+		QCOMPARE(_axe->deleteObject(), true);
+		QCOMPARE(_sword->deleteObject(), true);
+		QCOMPARE(_sidekick->deleteObject(), true);
+		QCOMPARE(_hero->deleteObject(), true);
+	}
 
 	// Instance members
 	QString			_dataPath;
@@ -126,6 +300,19 @@ private:
 	PFErrorPtr		_saveError;
 	bool			_deleteObjectSucceeded;
 	PFErrorPtr		_deleteObjectError;
+	bool			_fetchSucceeded;
+	PFErrorPtr		_fetchError;
+
+	// Instance Members - Object Graph
+	PFUserPtr		_testUser;
+	PFObjectPtr		_greaves;
+	PFObjectPtr		_helmet;
+	PFObjectPtr		_axe;
+	PFObjectPtr		_sword;
+	PFObjectPtr		_sidekick;
+	PFObjectPtr		_hero;
+	PFDateTimePtr	_expirationDate;
+	PFFilePtr		_tutorialFile;
 };
 
 void TestPFObject::test_objectWithClassName()
@@ -1109,6 +1296,352 @@ void TestPFObject::test_deleteObjectInBackground()
 	QCOMPARE(deleteObjectStarted, true);
 	QCOMPARE(_deleteObjectSucceeded, true);
 	QCOMPARE(_deleteObjectError.isNull(), true);
+}
+
+void TestPFObject::test_fetch()
+{
+	//================================================================
+	//                        Invalid Cases
+	//================================================================
+
+	// Invalid Case 1 - already fetching (fully tested in test_fetchInBackground())
+
+	// Invalid Case 2 - try to fetch an object that hasn't been put into the cloud
+	PFObjectPtr invalidObject = PFObject::objectWithClassName("SimplyBad");
+	QCOMPARE(invalidObject->fetch(), false);
+
+	//================================================================
+	//                         Valid Cases
+	//================================================================
+
+	// Fetch the hero
+	PFObjectPtr hero = PFObject::objectWithClassName("Character", _hero->objectId());
+	bool heroFetched = hero->fetch();
+	QCOMPARE(heroFetched, true);
+
+	// Test hero primitive objects
+	QCOMPARE(hero->objectForKey("name").toString(), QString("Hercules"));
+	QCOMPARE(hero->objectForKey("characterType").toString(), QString("Hero"));
+	QCOMPARE(hero->objectForKey("power").toInt(), 80);
+	QCOMPARE(hero->createdAt()->dateTime(), _hero->createdAt()->dateTime());
+
+	// PFDateTime (test hero expirationDate)
+	PFDateTimePtr expirationDate = PFDateTime::dateTimeFromVariant(hero->objectForKey("expirationDate"));
+	QCOMPARE(expirationDate->dateTime(), _expirationDate->dateTime());
+
+	// PFFile (test hero tutorialFile)
+	PFFilePtr tutorialFile = PFFile::fileFromVariant(hero->objectForKey("tutorialFile"));
+	QCOMPARE(tutorialFile->url(), _tutorialFile->url());
+
+	// PFACL (test hero ACL)
+	QCOMPARE(hero->ACL().isNull(), _hero->ACL().isNull());
+	QCOMPARE(hero->ACL()->publicReadAccess(), _hero->ACL()->publicReadAccess());
+	QCOMPARE(hero->ACL()->publicWriteAccess(), _hero->ACL()->publicWriteAccess());
+	QCOMPARE(hero->ACL()->publicReadAccess(), true);
+	QCOMPARE(hero->ACL()->publicWriteAccess(), true);
+
+	// PFUser (test hero accountOwner - need to fetch)
+	PFUserPtr testUser = PFUser::userFromVariant(hero->objectForKey("accountOwner"));
+	bool testUserFetched = testUser->fetch();
+	QCOMPARE(testUserFetched, true);
+	QCOMPARE(testUser->username(), _testUser->username());
+	QCOMPARE(testUser->email(), _testUser->email());
+
+	// PFObject (test hero sidekick - need to fetch)
+	PFObjectPtr sidekick = PFObject::objectFromVariant(hero->objectForKey("sidekick"));
+	bool sidekickFetched = sidekick->fetch();
+	QCOMPARE(sidekickFetched, true);
+	QCOMPARE(sidekick->objectForKey("name").toString(), QString("Menalous"));
+	QCOMPARE(sidekick->objectForKey("characterType").toString(), QString("Sidekick"));
+	QCOMPARE(sidekick->objectForKey("power").toInt(), 24);
+
+	// PFObject List (test hero weapons - need to fetch)
+	QVariantList weapons = hero->objectForKey("weapons").toList();
+	PFObjectPtr axe = PFObject::objectFromVariant(weapons.at(0));
+	PFObjectPtr sword = PFObject::objectFromVariant(weapons.at(1));
+	bool axeFetched = axe->fetch();
+	QCOMPARE(axeFetched, true);
+	bool swordFetched = sword->fetch();
+	QCOMPARE(swordFetched, true);
+	QCOMPARE(axe->objectForKey("attackMin").toInt(), 19);
+	QCOMPARE(axe->objectForKey("attackMax").toInt(), 26);
+	QCOMPARE(axe->objectForKey("strengthRequired").toInt(), 65);
+	QCOMPARE(sword->objectForKey("attackMin").toInt(), 13);
+	QCOMPARE(sword->objectForKey("attackMax").toInt(), 15);
+	QCOMPARE(sword->objectForKey("strengthRequired").toInt(), 29);
+
+	// PFObject Map (test hero armor - need to fetch)
+	QVariantMap armor = hero->objectForKey("armor").toMap();
+	PFObjectPtr greaves = PFObject::objectFromVariant(armor["greaves"]);
+	PFObjectPtr helmet = PFObject::objectFromVariant(armor["helmet"]);
+	bool greavesFetched = greaves->fetch();
+	QCOMPARE(greavesFetched, true);
+	bool helmetFetched = helmet->fetch();
+	QCOMPARE(helmetFetched, true);
+	QCOMPARE(greaves->objectForKey("name").toString(), QString("Greaves"));
+	QCOMPARE(greaves->objectForKey("defense").toInt(), 26);
+	QCOMPARE(helmet->objectForKey("name").toString(), QString("Helmet"));
+	QCOMPARE(helmet->objectForKey("defense").toInt(), 121);
+}
+
+void TestPFObject::test_fetchWithError()
+{
+	//================================================================
+	//                        Invalid Cases
+	//================================================================
+
+	// Invalid Case 1 - already fetching (fully tested in test_fetchInBackground())
+
+	// Invalid Case 2 - try to fetch an object that hasn't been put into the cloud
+	PFObjectPtr invalidObject = PFObject::objectWithClassName("SimplyBad");
+	PFErrorPtr invalidObjectFetchError;
+	QCOMPARE(invalidObject->fetch(invalidObjectFetchError), false);
+	QCOMPARE(invalidObjectFetchError.isNull(), true);
+
+	//================================================================
+	//                         Valid Cases
+	//================================================================
+
+	// Fetch the hero
+	PFObjectPtr hero = PFObject::objectWithClassName("Character", _hero->objectId());
+	PFErrorPtr heroFetchError;
+	bool heroFetched = hero->fetch(heroFetchError);
+	QCOMPARE(heroFetched, true);
+	QCOMPARE(heroFetchError.isNull(), true);
+
+	// Test hero primitive objects
+	QCOMPARE(hero->objectForKey("name").toString(), QString("Hercules"));
+	QCOMPARE(hero->objectForKey("characterType").toString(), QString("Hero"));
+	QCOMPARE(hero->objectForKey("power").toInt(), 80);
+	QCOMPARE(hero->createdAt()->dateTime(), _hero->createdAt()->dateTime());
+
+	// PFDateTime (test hero expirationDate)
+	PFDateTimePtr expirationDate = PFDateTime::dateTimeFromVariant(hero->objectForKey("expirationDate"));
+	QCOMPARE(expirationDate->dateTime(), _expirationDate->dateTime());
+
+	// PFFile (test hero tutorialFile)
+	PFFilePtr tutorialFile = PFFile::fileFromVariant(hero->objectForKey("tutorialFile"));
+	QCOMPARE(tutorialFile->url(), _tutorialFile->url());
+
+	// PFACL (test hero ACL)
+	QCOMPARE(hero->ACL().isNull(), _hero->ACL().isNull());
+	QCOMPARE(hero->ACL()->publicReadAccess(), _hero->ACL()->publicReadAccess());
+	QCOMPARE(hero->ACL()->publicWriteAccess(), _hero->ACL()->publicWriteAccess());
+	QCOMPARE(hero->ACL()->publicReadAccess(), true);
+	QCOMPARE(hero->ACL()->publicWriteAccess(), true);
+
+	// PFUser (test hero accountOwner - need to fetch)
+	PFUserPtr testUser = PFUser::userFromVariant(hero->objectForKey("accountOwner"));
+	PFErrorPtr testUserFetchError;
+	bool testUserFetched = testUser->fetch(testUserFetchError);
+	QCOMPARE(testUserFetched, true);
+	QCOMPARE(testUserFetchError.isNull(), true);
+	QCOMPARE(testUser->username(), _testUser->username());
+	QCOMPARE(testUser->email(), _testUser->email());
+
+	// PFObject (test hero sidekick - need to fetch)
+	PFObjectPtr sidekick = PFObject::objectFromVariant(hero->objectForKey("sidekick"));
+	PFErrorPtr sidekickFetchError;
+	bool sidekickFetched = sidekick->fetch(sidekickFetchError);
+	QCOMPARE(sidekickFetched, true);
+	QCOMPARE(sidekickFetchError.isNull(), true);
+	QCOMPARE(sidekick->objectForKey("name").toString(), QString("Menalous"));
+	QCOMPARE(sidekick->objectForKey("characterType").toString(), QString("Sidekick"));
+	QCOMPARE(sidekick->objectForKey("power").toInt(), 24);
+
+	// PFObject List (test hero weapons - need to fetch)
+	QVariantList weapons = hero->objectForKey("weapons").toList();
+	PFObjectPtr axe = PFObject::objectFromVariant(weapons.at(0));
+	PFObjectPtr sword = PFObject::objectFromVariant(weapons.at(1));
+	PFErrorPtr axeFetchError;
+	bool axeFetched = axe->fetch(axeFetchError);
+	QCOMPARE(axeFetched, true);
+	QCOMPARE(axeFetchError.isNull(), true);
+	PFErrorPtr swordFetchError;
+	bool swordFetched = sword->fetch(swordFetchError);
+	QCOMPARE(swordFetched, true);
+	QCOMPARE(swordFetchError.isNull(), true);
+	QCOMPARE(axe->objectForKey("attackMin").toInt(), 19);
+	QCOMPARE(axe->objectForKey("attackMax").toInt(), 26);
+	QCOMPARE(axe->objectForKey("strengthRequired").toInt(), 65);
+	QCOMPARE(sword->objectForKey("attackMin").toInt(), 13);
+	QCOMPARE(sword->objectForKey("attackMax").toInt(), 15);
+	QCOMPARE(sword->objectForKey("strengthRequired").toInt(), 29);
+
+	// PFObject Map (test hero armor - need to fetch)
+	QVariantMap armor = hero->objectForKey("armor").toMap();
+	PFObjectPtr greaves = PFObject::objectFromVariant(armor["greaves"]);
+	PFObjectPtr helmet = PFObject::objectFromVariant(armor["helmet"]);
+	PFErrorPtr greavesFetchError;
+	bool greavesFetched = greaves->fetch(greavesFetchError);
+	QCOMPARE(greavesFetched, true);
+	QCOMPARE(greavesFetchError.isNull(), true);
+	PFErrorPtr helmetFetchError;
+	bool helmetFetched = helmet->fetch(helmetFetchError);
+	QCOMPARE(helmetFetched, true);
+	QCOMPARE(helmetFetchError.isNull(), true);
+	QCOMPARE(greaves->objectForKey("name").toString(), QString("Greaves"));
+	QCOMPARE(greaves->objectForKey("defense").toInt(), 26);
+	QCOMPARE(helmet->objectForKey("name").toString(), QString("Helmet"));
+	QCOMPARE(helmet->objectForKey("defense").toInt(), 121);
+}
+
+void TestPFObject::test_fetchInBackground()
+{
+	// Use an event loop to block until we receive the completion
+	QEventLoop eventLoop;
+
+	//================================================================
+	//                        Invalid Cases
+	//================================================================
+
+	////////////////////////////////////////////////////////////////////////////////
+	// Invalid Case 1 - already fetching
+	////////////////////////////////////////////////////////////////////////////////
+
+	PFObjectPtr hammer = PFObject::objectWithClassName("Tool");
+	hammer->setObjectForKey(QString("Hammer"), "name");
+	QCOMPARE(hammer->save(), true);
+	PFObjectPtr cloudHammer = PFObject::objectWithClassName("Tool", hammer->objectId());
+	QCOMPARE(cloudHammer->fetchInBackground(this, SLOT(fetchCompleted(bool, PFErrorPtr))), true);
+
+	// Try to fetch all three different ways (all should fail b/c the previous fetch is already in progress)
+	QCOMPARE(cloudHammer->fetch(), false); // fails b/c fetch in progress
+	PFErrorPtr hammerFetchError;
+	QCOMPARE(cloudHammer->fetch(hammerFetchError), false); // fails b/c fetch in progress
+	QCOMPARE(hammerFetchError.isNull(), true);
+	QCOMPARE(cloudHammer->fetchInBackground(NULL, 0), false); // fails b/c fetch in progress
+
+	// Wait until the fetch reply is captured then test to make sure the first fetch succeeded
+	QObject::connect(this, SIGNAL(fetchEnded()), &eventLoop, SLOT(quit()));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_fetchSucceeded, true);
+	QCOMPARE(_fetchError.isNull(), true);
+	_fetchSucceeded = false;
+	_fetchError = PFErrorPtr();
+
+	// Delete the hammer from the cloud
+	QCOMPARE(hammer->deleteObject(), true);
+
+	////////////////////////////////////////////////////////////////////////////////
+	// Invalid Case 2 - try to fetch an object that hasn't been put into the cloud
+	////////////////////////////////////////////////////////////////////////////////
+
+	PFObjectPtr invalidObject = PFObject::objectWithClassName("LetsFail");
+	QCOMPARE(invalidObject->fetchInBackground(NULL, 0), false);
+
+	//================================================================
+	//                         Valid Cases
+	//================================================================
+
+	// Fetch the hero
+	PFObjectPtr hero = PFObject::objectWithClassName("Character", _hero->objectId());
+	QCOMPARE(hero->fetchInBackground(this, SLOT(fetchCompleted(bool, PFErrorPtr))), true);
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_fetchSucceeded, true);
+	QCOMPARE(_fetchError.isNull(), true);
+	_fetchSucceeded = false;
+	_fetchError = PFErrorPtr();
+
+	// Test hero primitive objects
+	QCOMPARE(hero->objectForKey("name").toString(), QString("Hercules"));
+	QCOMPARE(hero->objectForKey("characterType").toString(), QString("Hero"));
+	QCOMPARE(hero->objectForKey("power").toInt(), 80);
+	QCOMPARE(hero->createdAt()->dateTime(), _hero->createdAt()->dateTime());
+
+	// PFDateTime (test hero expirationDate)
+	PFDateTimePtr expirationDate = PFDateTime::dateTimeFromVariant(hero->objectForKey("expirationDate"));
+	QCOMPARE(expirationDate->dateTime(), _expirationDate->dateTime());
+
+	// PFFile (test hero tutorialFile)
+	PFFilePtr tutorialFile = PFFile::fileFromVariant(hero->objectForKey("tutorialFile"));
+	QCOMPARE(tutorialFile->url(), _tutorialFile->url());
+
+	// PFACL (test hero ACL)
+	QCOMPARE(hero->ACL().isNull(), _hero->ACL().isNull());
+	QCOMPARE(hero->ACL()->publicReadAccess(), _hero->ACL()->publicReadAccess());
+	QCOMPARE(hero->ACL()->publicWriteAccess(), _hero->ACL()->publicWriteAccess());
+	QCOMPARE(hero->ACL()->publicReadAccess(), true);
+	QCOMPARE(hero->ACL()->publicWriteAccess(), true);
+
+	// PFUser (test hero accountOwner - need to fetch)
+	PFUserPtr testUser = PFUser::userFromVariant(hero->objectForKey("accountOwner"));
+	QCOMPARE(testUser->fetchInBackground(this, SLOT(fetchCompleted(bool, PFErrorPtr))), true);
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_fetchSucceeded, true);
+	QCOMPARE(_fetchError.isNull(), true);
+	_fetchSucceeded = false;
+	_fetchError = PFErrorPtr();
+	QCOMPARE(testUser->username(), _testUser->username());
+	QCOMPARE(testUser->email(), _testUser->email());
+
+	// PFObject (test hero sidekick - need to fetch)
+	PFObjectPtr sidekick = PFObject::objectFromVariant(hero->objectForKey("sidekick"));
+	QCOMPARE(sidekick->fetchInBackground(this, SLOT(fetchCompleted(bool, PFErrorPtr))), true);
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_fetchSucceeded, true);
+	QCOMPARE(_fetchError.isNull(), true);
+	_fetchSucceeded = false;
+	_fetchError = PFErrorPtr();
+	QCOMPARE(sidekick->objectForKey("name").toString(), QString("Menalous"));
+	QCOMPARE(sidekick->objectForKey("characterType").toString(), QString("Sidekick"));
+	QCOMPARE(sidekick->objectForKey("power").toInt(), 24);
+
+	// PFObject List (test hero weapons - need to fetch)
+	QVariantList weapons = hero->objectForKey("weapons").toList();
+	PFObjectPtr axe = PFObject::objectFromVariant(weapons.at(0));
+	PFObjectPtr sword = PFObject::objectFromVariant(weapons.at(1));
+
+	// Async axe fetch
+	QCOMPARE(axe->fetchInBackground(this, SLOT(fetchCompleted(bool, PFErrorPtr))), true);
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_fetchSucceeded, true);
+	QCOMPARE(_fetchError.isNull(), true);
+	_fetchSucceeded = false;
+	_fetchError = PFErrorPtr();
+
+	// Async sword fetch
+	QCOMPARE(sword->fetchInBackground(this, SLOT(fetchCompleted(bool, PFErrorPtr))), true); // fetch axe
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_fetchSucceeded, true);
+	QCOMPARE(_fetchError.isNull(), true);
+	_fetchSucceeded = false;
+	_fetchError = PFErrorPtr();
+
+	// Axe and sword tests
+	QCOMPARE(axe->objectForKey("attackMin").toInt(), 19);
+	QCOMPARE(axe->objectForKey("attackMax").toInt(), 26);
+	QCOMPARE(axe->objectForKey("strengthRequired").toInt(), 65);
+	QCOMPARE(sword->objectForKey("attackMin").toInt(), 13);
+	QCOMPARE(sword->objectForKey("attackMax").toInt(), 15);
+	QCOMPARE(sword->objectForKey("strengthRequired").toInt(), 29);
+
+	// PFObject Map (test hero armor - need to fetch)
+	QVariantMap armor = hero->objectForKey("armor").toMap();
+	PFObjectPtr greaves = PFObject::objectFromVariant(armor["greaves"]);
+	PFObjectPtr helmet = PFObject::objectFromVariant(armor["helmet"]);
+
+	// Async greaves fetch
+	QCOMPARE(greaves->fetchInBackground(this, SLOT(fetchCompleted(bool, PFErrorPtr))), true);
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_fetchSucceeded, true);
+	QCOMPARE(_fetchError.isNull(), true);
+	_fetchSucceeded = false;
+	_fetchError = PFErrorPtr();
+
+	// Async helmet fetch
+	QCOMPARE(helmet->fetchInBackground(this, SLOT(fetchCompleted(bool, PFErrorPtr))), true);
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_fetchSucceeded, true);
+	QCOMPARE(_fetchError.isNull(), true);
+	_fetchSucceeded = false;
+	_fetchError = PFErrorPtr();
+
+	// Helmet and greaves tests
+	QCOMPARE(greaves->objectForKey("name").toString(), QString("Greaves"));
+	QCOMPARE(greaves->objectForKey("defense").toInt(), 26);
+	QCOMPARE(helmet->objectForKey("name").toString(), QString("Helmet"));
+	QCOMPARE(helmet->objectForKey("defense").toInt(), 121);
 }
 
 void TestPFObject::test_fromJson()

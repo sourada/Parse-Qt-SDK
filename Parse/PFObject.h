@@ -59,27 +59,17 @@ public:
 	bool deleteObject(PFErrorPtr& error);
 	bool deleteObjectInBackground(QObject *deleteObjectCompleteTarget, const char *deleteObjectCompleteAction);
 
-	////////////////////////////////////////////////////////////////
-	//
-	// TODO List (required):
-	// - removeObjectForKey
-	// - Array Add and Remove
-	// - Increment Key
-	// - Fetch, Fetch If Needed
-	//
-	// TODO List (optional):
-	// - Save All
-	// - Delete All
-	// - Fetch All, Fetch All If Needed
-	//
-	////////////////////////////////////////////////////////////////
+	// Fetch Methods - fetchCompleteAction signature: (bool succeeded, PFErrorPtr error)
+	bool fetch();
+	bool fetch(PFErrorPtr& error);
+	bool fetchInBackground(QObject *fetchCompleteTarget, const char *fetchCompleteAction);
 
 	//=================================================================================
 	//                                BACKEND API
 	//=================================================================================
 
 	// PFSerializable Methods
-	virtual PFSerializablePtr fromJson(const QJsonObject& jsonObject);
+	static QVariant fromJson(const QJsonObject& jsonObject);
 	virtual bool toJson(QJsonObject& jsonObject);
 	virtual const QString className() const;
 
@@ -88,12 +78,14 @@ protected slots:
 	// Background Network Reply Completion Slots
 	void handleSaveCompleted(QNetworkReply* networkReply);
 	void handleDeleteObjectCompleted(QNetworkReply* networkReply);
+	void handleFetchCompleted(QNetworkReply* networkReply);
 
 signals:
 
 	// Background Request Completion Signals
 	void saveCompleted(bool succeeded, PFErrorPtr error);
 	void deleteObjectCompleted(bool succeeded, PFErrorPtr error);
+	void fetchCompleted(bool succeeded, PFErrorPtr error);
 
 protected:
 
@@ -109,10 +101,13 @@ protected:
 	virtual void createSaveNetworkRequest(QNetworkRequest& request, QByteArray& data);
 	QJsonValue convertDataToJson(const QVariant& data); // Recursive
 	virtual QNetworkRequest createDeleteObjectNetworkRequest();
+	virtual QNetworkRequest createFetchNetworkRequest();
 
 	// Network Reply Deserialization Methods
 	bool deserializeSaveNetworkReply(QNetworkReply* networkReply, bool updated, PFErrorPtr& error);
-	bool deserializeDeleteObjectReply(QNetworkReply* networkReply, PFErrorPtr& error);
+	bool deserializeDeleteObjectNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
+	virtual bool deserializeFetchNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
+	QVariant convertJsonToVariant(const QJsonValue& jsonValue);
 
 	// Instance members
 	QString				_parseClassName;
@@ -124,6 +119,8 @@ protected:
 	QVariantMap			_updatedChildObjects;
 	bool				_isSaving;
 	bool				_isDeleting;
+	bool				_isFetching;
+	bool				_fetched;
 };
 
 }	// End of parse namespace

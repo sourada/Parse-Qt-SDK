@@ -28,7 +28,6 @@ class PFSerializable : public QObject
 public:
 
 	// Serialization Methods
-	virtual PFSerializablePtr fromJson(const QJsonObject& jsonObject) = 0;
 	virtual bool toJson(QJsonObject& jsonObject) = 0;
 	virtual const QString className() const = 0;
 
