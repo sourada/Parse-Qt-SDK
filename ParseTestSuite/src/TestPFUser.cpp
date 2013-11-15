@@ -620,7 +620,20 @@ void TestPFUser::test_requestPasswordResetForEmailInBackground()
 
 void TestPFUser::test_fromJson()
 {
-	// TODO: Not implemented yet
+	// Create a test user
+	PFUserPtr user = PFUser::userWithObjectId("09ajf9j3fr49j");
+
+	// Convert the test user to json
+	QJsonObject jsonUser;
+	user->toJson(jsonUser);
+
+	// Convert the json back to a user
+	QVariant userVariant = PFUser::fromJson(jsonUser);
+	PFUserPtr convertedUser = PFUser::userFromVariant(userVariant);
+
+	// Test the results of the conversion
+	QCOMPARE(convertedUser.isNull(), false);
+	QCOMPARE(convertedUser->objectId(), user->objectId());
 }
 
 void TestPFUser::test_toJson()

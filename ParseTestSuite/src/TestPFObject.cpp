@@ -1646,7 +1646,18 @@ void TestPFObject::test_fetchInBackground()
 
 void TestPFObject::test_fromJson()
 {
-	// TODO: Not implemented yet
+	// Convert the sword object to json
+	QJsonObject jsonSword;
+	QCOMPARE(_sword->toJson(jsonSword), true);
+
+	// Convert the json back to a sword
+	QVariant swordVariant = PFObject::fromJson(jsonSword);
+	PFObjectPtr convertedSword = PFObject::objectFromVariant(swordVariant);
+
+	// Test the results
+	QCOMPARE(convertedSword.isNull(), false);
+	QCOMPARE(convertedSword->className(), _sword->className());
+	QCOMPARE(convertedSword->objectId(), _sword->objectId());
 }
 
 void TestPFObject::test_toJson()

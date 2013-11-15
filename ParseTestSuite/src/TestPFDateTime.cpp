@@ -107,7 +107,22 @@ void TestPFDateTime::test_dateTime()
 
 void TestPFDateTime::test_fromJson()
 {
-	// TODO: Not implemented yet
+	// Create a date time to test
+	QDateTime dateTime(QDate(2013, 11, 12), QTime(13, 16, 47, 348));
+	dateTime.setTimeSpec(Qt::UTC);
+	PFDateTimePtr pfDateTime = PFDateTime::dateTimeFromDateTime(dateTime);
+
+	// Convert the date time to json
+	QJsonObject jsonObject;
+	QCOMPARE(pfDateTime->toJson(jsonObject), true);
+
+	// Convert the json back to a date time
+	QVariant dateTimeVariant = PFDateTime::fromJson(jsonObject);
+	PFDateTimePtr convertedDateTime = PFDateTime::dateTimeFromVariant(dateTimeVariant);
+
+	// Test out the results of the conversion
+	QCOMPARE(convertedDateTime.isNull(), false);
+	QCOMPARE(convertedDateTime->toParseString(), pfDateTime->toParseString());
 }
 
 void TestPFDateTime::test_toJson()

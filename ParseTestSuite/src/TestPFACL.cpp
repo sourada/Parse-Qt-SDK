@@ -303,7 +303,29 @@ void TestPFACL::test_writeAccessForUser()
 
 void TestPFACL::test_fromJson()
 {
-	// TODO: Not implemented yet
+	// Create a fake user id
+	QString userId = "YsWthslcn0";
+
+	// Create an ACL
+	PFACLPtr acl = PFACL::ACL();
+	acl->setPublicReadAccess(true);
+	acl->setPublicWriteAccess(false);
+	acl->setReadAccessForUserId(true, userId);
+	acl->setWriteAccessForUserId(true, userId);
+
+	// Convert the ACL to json
+	QJsonObject jsonACL;
+	QCOMPARE(acl->toJson(jsonACL), true);
+
+	// Convert the json back to an ACL
+	QVariant aclVariant = PFACL::fromJson(jsonACL);
+	PFACLPtr convertedACL = PFACL::ACLFromVariant(aclVariant);
+
+	// Test out the properties in the converted acl
+	QCOMPARE(convertedACL->publicReadAccess(), true);
+	QCOMPARE(convertedACL->publicWriteAccess(), false);
+	QCOMPARE(convertedACL->readAccessForUserId(userId), true);
+	QCOMPARE(convertedACL->writeAccessForUserId(userId), true);
 }
 
 void TestPFACL::test_toJson()

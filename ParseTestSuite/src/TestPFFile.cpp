@@ -557,7 +557,19 @@ void TestPFFile::test_cancel()
 
 void TestPFFile::test_fromJson()
 {
-	// TODO: Not implemented yet
+	// Convert the name url file to json
+	QJsonObject jsonObject;
+	QCOMPARE(_nameUrlFile->toJson(jsonObject), true);
+	jsonObject["url"] = _nameUrlFile->url();
+
+	// Convert the json back to a file
+	QVariant fileVariant = PFFile::fromJson(jsonObject);
+	PFFilePtr convertedFile = PFFile::fileFromVariant(fileVariant);
+
+	// Test the results of the conversion
+	QCOMPARE(convertedFile.isNull(), false);
+	QCOMPARE(convertedFile->name(), _nameUrlFile->name());
+	QCOMPARE(convertedFile->url(), _nameUrlFile->url());
 }
 
 void TestPFFile::test_toJson()
