@@ -87,6 +87,7 @@ private slots:
 	// Creation Methods
 	void test_user();
 	void test_currentUser();
+	void test_userFromVariant();
 
 	// Authentication Methods
 	void test_isAuthenticated();
@@ -169,6 +170,22 @@ void TestPFUser::test_currentUser()
 	PFErrorPtr error;
 	bool deletedTestUser = testUser->deleteObject(error);
 	QCOMPARE(deletedTestUser, true);
+}
+
+void TestPFUser::test_userFromVariant()
+{
+	// Valid Case
+	PFUserPtr user = PFUser::user();
+	user->setUsername("test_userFromVariant");
+	QVariant userVariant = PFSerializable::toVariant(user);
+	PFUserPtr convertedUser = PFUser::userFromVariant(userVariant);
+	QCOMPARE(convertedUser.isNull(), false);
+	QCOMPARE(convertedUser->username(), QString("test_userFromVariant"));
+
+	// Invalid Case - QString
+	QVariant stringVariant = QString("StringVariant");
+	PFUserPtr convertedString = PFUser::userFromVariant(stringVariant);
+	QCOMPARE(convertedString.isNull(), true);
 }
 
 void TestPFUser::test_isAuthenticated()
