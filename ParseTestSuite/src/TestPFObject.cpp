@@ -109,6 +109,7 @@ private slots:
 	// Object Storage Methods
 	void test_setObjectForKey();
 	void test_setObjectForKeyWithSerializable();
+	void test_removeObjectForKey();
 	void test_objectForKey();
 	void test_allKeys();
 
@@ -556,6 +557,41 @@ void TestPFObject::test_setObjectForKeyWithSerializable()
 	QCOMPARE(levelTown2->objectForKey("name").toString(), QString("Burial Grounds"));
 }
 
+void TestPFObject::test_removeObjectForKey()
+{
+	// Create an object
+	PFObjectPtr lamp = PFObject::objectWithClassName("Furniture");
+
+	// Try to remove a key that doesn't exist
+	QCOMPARE(lamp->removeObjectForKey("ThisKeyDoesNotExist"), false);
+
+	// Let's add a key then remove it
+	lamp->setObjectForKey(QString("Lamp"), "furnitureType");
+	QCOMPARE(lamp->removeObjectForKey("furnitureType"), true);
+	QCOMPARE(lamp->allKeys().isEmpty(), true);
+
+	// Add the key again and save the object
+	lamp->setObjectForKey(QString("Lamp"), "furnitureType");
+	QCOMPARE(lamp->save(), true);
+
+	// Fetch the object from the server and verify the key was saved
+	PFObjectPtr cloudLamp = PFObject::objectWithClassName(lamp->parseClassName(), lamp->objectId());
+	QCOMPARE(cloudLamp->fetch(), true);
+	QCOMPARE(cloudLamp->objectForKey("furnitureType").toString(), QString("Lamp"));
+
+	// Remove the key from the lamp
+	QCOMPARE(lamp->removeObjectForKey("furnitureType"), true);
+
+	// Save the lamp again, then re-fetch the cloud lamp and verify the key is gone
+	QCOMPARE(lamp->save(), true);
+	QCOMPARE(cloudLamp->fetch(), true);
+	QCOMPARE(cloudLamp->objectForKey("furnitureType").isValid(), false);
+	QCOMPARE(cloudLamp->allKeys().isEmpty(), true);
+
+	// Cleanup
+	QCOMPARE(lamp->deleteObject(), true);
+}
+
 void TestPFObject::test_objectForKey()
 {
 	/////////////////////////////////////////////////////////////////////////////////
@@ -746,10 +782,10 @@ void TestPFObject::test_setACL()
 	QCOMPARE(level->ACL()->publicWriteAccess(), false);
 
 	// Reset the ACL
+	QCOMPARE(level->allKeys().toSet().contains("ACL"), true);
 	level->setACL(PFACLPtr());
 	QCOMPARE(level->ACL().isNull(), true);
-
-	// TODO: Needs to also remove the ACL from the object
+	QCOMPARE(level->allKeys().toSet().contains("ACL"), false);
 }
 
 void TestPFObject::test_ACL()
@@ -767,8 +803,10 @@ void TestPFObject::test_ACL()
 	QCOMPARE(level->ACL()->publicWriteAccess(), false);
 
 	// Reset the ACL
+	QCOMPARE(level->allKeys().toSet().contains("ACL"), true);
 	level->setACL(PFACLPtr());
 	QCOMPARE(level->ACL().isNull(), true);
+	QCOMPARE(level->allKeys().toSet().contains("ACL"), false);
 }
 
 void TestPFObject::test_parseClassName()

@@ -36,7 +36,8 @@ public:
 	// Object Storage Methods
 	void setObjectForKey(const QVariant& object, const QString& key);
 	void setObjectForKey(PFSerializablePtr object, const QString& key);
-	const QVariant& objectForKey(const QString& key);
+	bool removeObjectForKey(const QString& key);
+	QVariant objectForKey(const QString& key);
 	QStringList allKeys();
 
 	// ACL Accessor Methods

@@ -128,9 +128,33 @@ void PFObject::setObjectForKey(PFSerializablePtr object, const QString& key)
 	setObjectForKey(PFSerializable::toVariant(object), key);
 }
 
-const QVariant& PFObject::objectForKey(const QString& key)
+bool PFObject::removeObjectForKey(const QString& key)
 {
-	return _properties[key];
+	if (_properties.contains(key))
+	{
+		// Remove the property
+		_properties.remove(key);
+
+		// Create a delete operation if the object is not new
+		if (!_objectId.isEmpty())
+		{
+			QVariantMap operation;
+			operation["__op"] = QString("Delete");
+			_updatedProperties[key] = operation;
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
+QVariant PFObject::objectForKey(const QString& key)
+{
+	if (_properties.contains(key))
+		return _properties[key];
+
+	return QVariant();
 }
 
 QStringList PFObject::allKeys()
@@ -143,7 +167,10 @@ QStringList PFObject::allKeys()
 void PFObject::setACL(PFACLPtr acl)
 {
 	_acl = acl;
-	setObjectForKey(PFSerializable::toVariant(acl), "ACL");
+	if (acl.isNull())
+		removeObjectForKey("ACL");
+	else
+		setObjectForKey(PFSerializable::toVariant(acl), "ACL");
 }
 
 PFACLPtr PFObject::ACL()
