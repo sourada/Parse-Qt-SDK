@@ -584,10 +584,8 @@ void TestPFFile::test_toJson()
 	QCOMPARE(_nameUrlFile->toJson(jsonObject), true);
 	QCOMPARE(jsonObject.contains("__type"), true);
 	QCOMPARE(jsonObject.contains("name"), true);
-	QCOMPARE(jsonObject.contains("url"), true);
 	QCOMPARE(jsonObject["__type"].toString(), QString("File"));
 	QCOMPARE(jsonObject["name"].toString(), _nameUrlFile->name());
-	QCOMPARE(jsonObject["url"].toString(), _nameUrlFile->url());
 }
 
 void TestPFFile::test_className()
