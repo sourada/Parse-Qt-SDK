@@ -139,6 +139,13 @@ private slots:
 	void test_toJson();
 	void test_className();
 
+	//=================================================================
+	//                    Additional Tests
+	//=================================================================
+
+	void test_savingWithPermissions();
+	void test_fetchingWithPermissions();
+
 private:
 
 	void buildObjectGraph()
@@ -287,6 +294,13 @@ private:
 
 	void deleteObjectGraph()
 	{
+		// Re-authenticate testUser if necessary
+		if (!_testUser->isAuthenticated())
+		{
+			QCOMPARE(PFUser::logInWithUsernameAndPassword(_testUser->username(), _testUser->password()).isNull(), false);
+			_testUser = PFUser::currentUser();
+		}
+
 		// Cleanup
 		QCOMPARE(_testUser->deleteObject(), true);
 		QCOMPARE(_greaves->deleteObject(), true);
@@ -1687,6 +1701,83 @@ void TestPFObject::test_className()
 {
 	PFObjectPtr level = PFObject::objectWithClassName("Level");
 	QCOMPARE(level->className(), QString("PFObject"));
+}
+
+void TestPFObject::test_savingWithPermissions()
+{
+	// Sign up a test user
+	PFUserPtr user = PFUser::user();
+	user->setUsername("TestPFObject-test_savingWithPermissions");
+	user->setEmail("TestPFObject-test_savingWithPermissions@parse.com");
+	user->setPassword("testPassword");
+	QCOMPARE(PFUser::signUpWithUser(user), true);
+
+	// Create an ACL that only allows access for that user
+	PFACLPtr acl = PFACL::ACLWithUser(user);
+
+	// Create an object and save it to the cloud
+	PFObjectPtr sofa = PFObject::objectWithClassName("Furniture");
+	sofa->setObjectForKey(QString("Sofa"), "furnitureType");
+	sofa->setACL(acl);
+	QCOMPARE(sofa->save(), true);
+
+	// Let's log out
+	PFUser::logOut();
+
+	// Now modify the sofa and try to update it (should fail because we don't have write access)
+	sofa->setObjectForKey(QString("LoveSeat"), "furnitureType");
+	PFErrorPtr sofaSaveError;
+	QCOMPARE(sofa->save(sofaSaveError), false);
+	QCOMPARE(sofaSaveError->errorCode(), kPFErrorObjectNotFound);
+
+	// Let's log back in and resave
+	QCOMPARE(PFUser::logInWithUsernameAndPassword(user->username(), user->password()).isNull(), false);
+	QCOMPARE(sofa->save(), true);
+
+	// Cleanup the sofa and user
+	QCOMPARE(sofa->deleteObject(), true);
+	QCOMPARE(PFUser::currentUser()->deleteObject(), true);
+}
+
+void TestPFObject::test_fetchingWithPermissions()
+{
+	// Sign up a test user
+	PFUserPtr user = PFUser::user();
+	user->setUsername("TestPFObject-test_fetchingWithPermissions");
+	user->setEmail("TestPFObject-test_fetchingWithPermissions@parse.com");
+	user->setPassword("testPassword");
+	QCOMPARE(PFUser::signUpWithUser(user), true);
+
+	// Create an ACL that only allows access for that user
+	PFACLPtr acl = PFACL::ACLWithUser(user);
+
+	// Create an object and save it to the cloud
+	PFObjectPtr sofa = PFObject::objectWithClassName("Furniture");
+	sofa->setObjectForKey(QString("Sofa"), "furnitureType");
+	sofa->setACL(acl);
+	QCOMPARE(sofa->save(), true);
+
+	// Try to fetch the sofa from the cloud (should succeed since we're logged in as user)
+	PFObjectPtr cloudSofa = PFObject::objectWithClassName(sofa->parseClassName(), sofa->objectId());
+	QCOMPARE(cloudSofa->fetch(), true);
+
+	// Let's log out
+	PFUser::logOut();
+
+	// Try to fetch the cloud sofa again and this time it should fail b/c we're not authenticated
+	PFObjectPtr cloudSofa2 = PFObject::objectWithClassName(sofa->parseClassName(), sofa->objectId());
+	QCOMPARE(cloudSofa2->fetch(), false);
+
+	// Let's try to delete the sofa and the user (both should fail b/c we're not logged in)
+	QCOMPARE(sofa->deleteObject(), false);
+	QCOMPARE(user->deleteObject(), false);
+
+	// Let's log back in so we can cleanup
+	QCOMPARE(PFUser::logInWithUsernameAndPassword(user->username(), user->password()).isNull(), false);
+
+	// Cleanup
+	QCOMPARE(sofa->deleteObject(), true);
+	QCOMPARE(PFUser::currentUser()->deleteObject(), true);
 }
 
 DECLARE_TEST(TestPFObject)

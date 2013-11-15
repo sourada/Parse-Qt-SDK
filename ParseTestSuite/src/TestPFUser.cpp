@@ -695,14 +695,8 @@ void TestPFUser::test_fetchingUsers()
 	QCOMPARE(cloudUser->objectForKey("firstName").toString(), QString("Bill"));
 	QCOMPARE(cloudUser->objectForKey("lastName").toString(), QString("Lumbergh"));
 
-	// Try to delete the cloud user (should fail since the user isn't authenticated)
-	PFErrorPtr deletedCloudUserError;
-	bool deletedCloudUser = cloudUser->deleteObject(deletedCloudUserError);
-	QCOMPARE(deletedCloudUser, false);
-	QCOMPARE(deletedCloudUserError->errorCode(), kPFErrorUserCannotBeAlteredWithoutSession);
-
-	// Cleanup - Delete the authenticated test user
-	QCOMPARE(testUser->deleteObject(), true);
+	// Try to delete the cloud user (should pass since we're still authenticated as user which has the same objectId)
+	QCOMPARE(cloudUser->deleteObject(), true);
 }
 
 DECLARE_TEST(TestPFUser)

@@ -84,7 +84,19 @@ PFUserPtr PFUser::userFromVariant(const QVariant& variant)
 
 bool PFUser::isAuthenticated()
 {
-	return !_sessionToken.isEmpty();
+	// The only way you can be authenticated as a user is if your pointer matches
+	// that of the current user and you have a valid session token. If you do not
+	// match the current user and have a session token, then the session token will
+	// be cleared as it is in an invalid state.
+	if (gCurrentUser.data() == this)
+	{
+		return !_sessionToken.isEmpty();
+	}
+	else
+	{
+		_sessionToken = QString("");
+		return false;
+	}
 }
 
 void PFUser::setUsername(const QString& username)
@@ -137,6 +149,9 @@ bool PFUser::signUpWithUser(PFUserPtr user)
 
 bool PFUser::signUpWithUser(PFUserPtr user, PFErrorPtr& error)
 {
+	// Make sure we're logged out
+	PFUser::logOut();
+
 	// Create a network request and data
 	QNetworkRequest request;
 	QByteArray data;
@@ -167,6 +182,9 @@ bool PFUser::signUpWithUser(PFUserPtr user, PFErrorPtr& error)
 
 void PFUser::signUpWithUserInBackground(PFUserPtr user, QObject* target, const char* action)
 {
+	// Make sure we're logged out
+	PFUser::logOut();
+
 	// Keep the user around locally to ensure the callback succeeds
 	gSignUpUser = user;
 
@@ -250,6 +268,10 @@ void PFUser::logInWithUsernameAndPasswordInBackground(const QString& username, c
 
 void PFUser::logOut()
 {
+	// First clear the pointers session token (could have other shared pointers as well), then
+	// clear the current user reference.
+	if (!gCurrentUser.isNull())
+		gCurrentUser->_sessionToken = QString("");
 	gCurrentUser = PFUserPtr();
 }
 
@@ -494,7 +516,10 @@ QNetworkRequest PFUser::createDeleteObjectNetworkRequest()
 	QNetworkRequest request(url);
 	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
 	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
-	request.setRawHeader(QString("X-Parse-Session-Token").toUtf8(), _sessionToken.toUtf8());
+
+	// Attach the session token if we're authenticated as a particular user
+	if (PFUser::currentUser() && PFUser::currentUser()->isAuthenticated())
+		request.setRawHeader(QString("X-Parse-Session-Token").toUtf8(), PFUser::currentUser()->sessionToken().toUtf8());
 
 	return request;
 }
@@ -505,6 +530,10 @@ QNetworkRequest PFUser::createFetchNetworkRequest()
 	QNetworkRequest request(url);
 	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
 	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
+
+	// Attach the session token if we're authenticated as a particular user
+	if (PFUser::currentUser() && PFUser::currentUser()->isAuthenticated())
+		request.setRawHeader(QString("X-Parse-Session-Token").toUtf8(), PFUser::currentUser()->sessionToken().toUtf8());
 
 	return request;
 }

@@ -424,7 +424,6 @@ QVariant PFObject::fromJson(const QJsonObject& jsonObject)
 
 bool PFObject::toJson(QJsonObject& jsonObject)
 {
-	qDebug() << "PFObject::toJson";
 	if (_objectId.isEmpty())
 	{
 		qWarning() << "PFObject::toJson could NOT convert to PFObject to JSON because the _objectId is not set";
@@ -540,6 +539,10 @@ void PFObject::createSaveNetworkRequest(QNetworkRequest& request, QByteArray& da
 	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
 	request.setRawHeader(QString("Content-Type").toUtf8(), QString("application/json").toUtf8());
 
+	// Attach the session token if we're authenticated as a particular user
+	if (PFUser::currentUser() && PFUser::currentUser()->isAuthenticated())
+		request.setRawHeader(QString("X-Parse-Session-Token").toUtf8(), PFUser::currentUser()->sessionToken().toUtf8());
+
 	// Figure out whether we need to
 	QVariantMap objectsToSerialize;
 	if (updateRequired)
@@ -564,6 +567,10 @@ QNetworkRequest PFObject::createDeleteObjectNetworkRequest()
 	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
 	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
 
+	// Attach the session token if we're authenticated as a particular user
+	if (PFUser::currentUser() && PFUser::currentUser()->isAuthenticated())
+		request.setRawHeader(QString("X-Parse-Session-Token").toUtf8(), PFUser::currentUser()->sessionToken().toUtf8());
+
 	return request;
 }
 
@@ -573,6 +580,10 @@ QNetworkRequest PFObject::createFetchNetworkRequest()
 	QNetworkRequest request(url);
 	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
 	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
+
+	// Attach the session token if we're authenticated as a particular user
+	if (PFUser::currentUser() && PFUser::currentUser()->isAuthenticated())
+		request.setRawHeader(QString("X-Parse-Session-Token").toUtf8(), PFUser::currentUser()->sessionToken().toUtf8());
 
 	return request;
 }
