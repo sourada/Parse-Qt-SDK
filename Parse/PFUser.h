@@ -29,6 +29,7 @@ public:
 
 	// Creation Methods
 	static PFUserPtr user();
+	static PFUserPtr userWithObjectId(const QString& objectId);
 	static PFUserPtr userFromVariant(const QVariant& variant);
 
 	// Returns the currently authenticated user (NULL if the user isn't logged in)
@@ -139,6 +140,9 @@ protected:
 	bool deserializeLogInNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 	bool deserializePasswordResetNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 	virtual bool deserializeFetchNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
+
+	// Recursive JSON Conversion Helper Methods
+	virtual void stripInstanceMembersFromProperties();
 
 	// Instance members
 	QString			_username;

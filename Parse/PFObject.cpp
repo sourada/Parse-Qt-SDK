@@ -35,8 +35,8 @@ PFObject::PFObject()
 	_acl = PFACLPtr();
 	_createdAt = PFDateTimePtr();
 	_updatedAt = PFDateTimePtr();
-	_childObjects = QVariantMap();
-	_updatedChildObjects = QVariantMap();
+	_properties = QVariantMap();
+	_updatedProperties = QVariantMap();
 	_isSaving = false;
 	_isDeleting = false;
 	_isFetching = false;
@@ -118,9 +118,9 @@ PFObjectPtr PFObject::objectFromVariant(const QVariant& variant)
 
 void PFObject::setObjectForKey(const QVariant& object, const QString& key)
 {
-	_childObjects[key] = object;
+	_properties[key] = object;
 	if (!_objectId.isEmpty())
-		_updatedChildObjects[key] = object;
+		_updatedProperties[key] = object;
 }
 
 void PFObject::setObjectForKey(PFSerializablePtr object, const QString& key)
@@ -130,12 +130,12 @@ void PFObject::setObjectForKey(PFSerializablePtr object, const QString& key)
 
 const QVariant& PFObject::objectForKey(const QString& key)
 {
-	return _childObjects[key];
+	return _properties[key];
 }
 
 QStringList PFObject::allKeys()
 {
-	return _childObjects.keys();
+	return _properties.keys();
 }
 
 #pragma mark - ACL Accessor Methods
@@ -217,7 +217,7 @@ bool PFObject::save(PFErrorPtr& error)
 
 	// Clear out the updated children if necessary
 	if (updateRequired && success)
-		_updatedChildObjects.clear();
+		_updatedProperties.clear();
 
 	// Update the ivar
 	_isSaving = false;
@@ -458,7 +458,7 @@ void PFObject::handleSaveCompleted(QNetworkReply* networkReply)
 
 	// Clear out the updated children if necessary
 	if (updated && success)
-		_updatedChildObjects.clear();
+		_updatedProperties.clear();
 
 	// Update the ivar
 	_isSaving = false;
@@ -541,9 +541,9 @@ void PFObject::createSaveNetworkRequest(QNetworkRequest& request, QByteArray& da
 	// Figure out whether we need to
 	QVariantMap objectsToSerialize;
 	if (updateRequired)
-		objectsToSerialize = _updatedChildObjects;
+		objectsToSerialize = _updatedProperties;
 	else
-		objectsToSerialize = _childObjects;
+		objectsToSerialize = _properties;
 
 	// Serialize all the objects into json
 	QJsonObject jsonObject;
@@ -553,56 +553,6 @@ void PFObject::createSaveNetworkRequest(QNetworkRequest& request, QByteArray& da
 		jsonObject[key] = convertDataToJson(objectToSerialize);
 	}
 	data = QJsonDocument(jsonObject).toJson(QJsonDocument::Compact);
-}
-
-QJsonValue PFObject::convertDataToJson(const QVariant& data)
-{
-	if ((QMetaType::Type) data.type() == QMetaType::QVariantList)
-	{
-		QJsonArray jsonArray;
-		foreach (const QVariant& dataObject, data.toList())
-		{
-			QJsonValue jsonValue = convertDataToJson(dataObject);
-			jsonArray.append(jsonValue);
-		}
-
-		return QJsonValue(jsonArray);
-	}
-	else if ((QMetaType::Type) data.type() == QMetaType::QVariantMap)
-	{
-		QJsonObject jsonObject;
-		QVariantMap dataMap = data.toMap();
-		foreach (const QString& key, dataMap.keys())
-		{
-			QVariant dataObject = dataMap[key];
-			jsonObject[key] = convertDataToJson(dataObject);
-		}
-
-		return QJsonValue(jsonObject);
-	}
-	else if ((QMetaType::Type) data.type() == QMetaType::QVariantHash)
-	{
-		QJsonObject jsonObject;
-		QVariantHash dataHash;
-		foreach (const QString& key, dataHash.keys())
-		{
-			QVariant dataObject = dataHash[key];
-			jsonObject[key] = convertDataToJson(dataObject);
-		}
-
-		return QJsonValue(jsonObject);
-	}
-	else if (data.canConvert<PFSerializablePtr>())	// PFSerializablePtr
-	{
-		PFSerializablePtr serializable = data.value<PFSerializablePtr>();
-		QJsonObject jsonObject;
-		serializable->toJson(jsonObject);
-		return QJsonValue(jsonObject);
-	}
-	else
-	{
-		return QJsonValue::fromVariant(data);
-	}
 }
 
 QNetworkRequest PFObject::createDeleteObjectNetworkRequest()
@@ -693,35 +643,9 @@ bool PFObject::deserializeFetchNetworkReply(QNetworkReply* networkReply, PFError
 	// Extract the JSON payload
 	if (networkReply->error() == QNetworkReply::NoError) // SUCCESS
 	{
-		// Update our object with the keys guaranteed to be in the json reply
-		_objectId = jsonObject["objectId"].toString();
-		QString createdAt = jsonObject["createdAt"].toString();
-		QString updatedAt = jsonObject["updatedAt"].toString();
-		_createdAt = PFDateTime::dateTimeFromParseString(createdAt);
-		_updatedAt = PFDateTime::dateTimeFromParseString(updatedAt);
-		if (jsonObject.contains("ACL"))
-		{
-			QJsonObject aclJsonObject = jsonObject["ACL"].toObject();
-			QVariant aclVariant = PFACL::fromJson(aclJsonObject);
-			PFACLPtr acl = PFACL::ACLFromVariant(aclVariant);
-			setACL(acl);
-		}
-
-		// Create a set of keys and remove the ones we've already used or don't want to use
-		QSet<QString> jsonKeys = jsonObject.keys().toSet();
-		jsonKeys.remove("objectId");
-		jsonKeys.remove("createdAt");
-		jsonKeys.remove("updatedAt");
-		jsonKeys.remove("__type");
-		jsonKeys.remove("ACL");
-
-		// Update all our child objects with the remaining json keys
-		foreach (const QString& jsonKey, jsonKeys)
-		{
-			QJsonValue jsonValue = jsonObject[jsonKey];
-			QVariant jsonVariant = convertJsonToVariant(jsonValue);
-			_childObjects[jsonKey] = jsonVariant;
-		}
+		// Deserialize the json into our properties variant map and strip out the instance members
+		_properties = convertJsonToVariant(jsonObject).toMap();
+		stripInstanceMembersFromProperties();
 
 		return true;
 	}
@@ -732,6 +656,58 @@ bool PFObject::deserializeFetchNetworkReply(QNetworkReply* networkReply, PFError
 		error = PFError::errorWithCodeAndMessage(errorCode, errorMessage);
 
 		return false;
+	}
+}
+
+#pragma mark - Recursive JSON Conversion Helper Methods
+
+QJsonValue PFObject::convertDataToJson(const QVariant& data)
+{
+	if ((QMetaType::Type) data.type() == QMetaType::QVariantList)
+	{
+		QJsonArray jsonArray;
+		foreach (const QVariant& dataObject, data.toList())
+		{
+			QJsonValue jsonValue = convertDataToJson(dataObject);
+			jsonArray.append(jsonValue);
+		}
+
+		return QJsonValue(jsonArray);
+	}
+	else if ((QMetaType::Type) data.type() == QMetaType::QVariantMap)
+	{
+		QJsonObject jsonObject;
+		QVariantMap dataMap = data.toMap();
+		foreach (const QString& key, dataMap.keys())
+		{
+			QVariant dataObject = dataMap[key];
+			jsonObject[key] = convertDataToJson(dataObject);
+		}
+
+		return QJsonValue(jsonObject);
+	}
+	else if ((QMetaType::Type) data.type() == QMetaType::QVariantHash)
+	{
+		QJsonObject jsonObject;
+		QVariantHash dataHash;
+		foreach (const QString& key, dataHash.keys())
+		{
+			QVariant dataObject = dataHash[key];
+			jsonObject[key] = convertDataToJson(dataObject);
+		}
+
+		return QJsonValue(jsonObject);
+	}
+	else if (data.canConvert<PFSerializablePtr>())	// PFSerializablePtr
+	{
+		PFSerializablePtr serializable = data.value<PFSerializablePtr>();
+		QJsonObject jsonObject;
+		serializable->toJson(jsonObject);
+		return QJsonValue(jsonObject);
+	}
+	else
+	{
+		return QJsonValue::fromVariant(data);
 	}
 }
 
@@ -795,6 +771,37 @@ QVariant PFObject::convertJsonToVariant(const QJsonValue& jsonValue)
 	else
 	{
 		return jsonValue.toVariant();
+	}
+}
+
+void PFObject::stripInstanceMembersFromProperties()
+{
+	// objectId
+	if (_properties.contains("objectId"))
+		_objectId = _properties.take("objectId").toString();
+
+	// createdAt
+	if (_properties.contains("createdAt"))
+	{
+		QString createdAt = _properties.take("createdAt").toString();
+		_createdAt = PFDateTime::dateTimeFromParseString(createdAt);
+	}
+
+	// updatedAt
+	if (_properties.contains("updatedAt"))
+	{
+		QString updatedAt = _properties.take("updatedAt").toString();
+		_updatedAt = PFDateTime::dateTimeFromParseString(updatedAt);
+	}
+
+	// ACL
+	if (_properties.contains("ACL"))
+	{
+		QVariantMap aclVariantMap = _properties.take("ACL").toMap();
+		QJsonObject aclJsonObject = QJsonObject::fromVariantMap(aclVariantMap);
+		QVariant aclVariant = PFACL::fromJson(aclJsonObject);
+		PFACLPtr acl = PFACL::ACLFromVariant(aclVariant);
+		setACL(acl);
 	}
 }
 

@@ -99,7 +99,6 @@ protected:
 
 	// Network Request Builder Methods
 	virtual void createSaveNetworkRequest(QNetworkRequest& request, QByteArray& data);
-	QJsonValue convertDataToJson(const QVariant& data); // Recursive
 	virtual QNetworkRequest createDeleteObjectNetworkRequest();
 	virtual QNetworkRequest createFetchNetworkRequest();
 
@@ -107,7 +106,11 @@ protected:
 	bool deserializeSaveNetworkReply(QNetworkReply* networkReply, bool updated, PFErrorPtr& error);
 	bool deserializeDeleteObjectNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 	virtual bool deserializeFetchNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
+
+	// Recursive JSON Conversion Helper Methods
+	QJsonValue convertDataToJson(const QVariant& data);
 	QVariant convertJsonToVariant(const QJsonValue& jsonValue);
+	virtual void stripInstanceMembersFromProperties();
 
 	// Instance members
 	QString				_parseClassName;
@@ -115,8 +118,8 @@ protected:
 	PFACLPtr			_acl;
 	PFDateTimePtr		_createdAt;
 	PFDateTimePtr		_updatedAt;
-	QVariantMap			_childObjects;
-	QVariantMap			_updatedChildObjects;
+	QVariantMap			_properties;
+	QVariantMap			_updatedProperties;
 	bool				_isSaving;
 	bool				_isDeleting;
 	bool				_isFetching;

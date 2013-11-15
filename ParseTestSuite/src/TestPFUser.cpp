@@ -86,6 +86,7 @@ private slots:
 
 	// Creation Methods
 	void test_user();
+	void test_userWithObjectId();
 	void test_currentUser();
 	void test_userFromVariant();
 
@@ -124,6 +125,12 @@ private slots:
 	void test_toJson();
 	void test_className();
 
+	//=================================================================
+	//                    Additional Tests
+	//=================================================================
+
+	void test_fetchingUsers();
+
 private:
 
 	// Instance members
@@ -148,6 +155,18 @@ void TestPFUser::test_user()
 	QCOMPARE(user->sessionToken(), QString(""));
 	QCOMPARE(user->createdAt(), PFDateTimePtr());
 	QCOMPARE(user->updatedAt(), PFDateTimePtr());
+}
+
+void TestPFUser::test_userWithObjectId()
+{
+	// Invalid Case - empty object id
+	PFUserPtr invalidUser = PFUser::userWithObjectId("");
+	QCOMPARE(invalidUser.isNull(), true);
+
+	// Valid Case
+	PFUserPtr validUser = PFUser::userWithObjectId("YsWthslcn0");
+	QCOMPARE(validUser.isNull(), false);
+	QCOMPARE(validUser->objectId(), QString("YsWthslcn0"));
 }
 
 void TestPFUser::test_currentUser()
@@ -364,11 +383,14 @@ void TestPFUser::test_logInWithUsernameAndPassword()
 	QCOMPARE(invalidUser, PFUserPtr());
 	QCOMPARE(PFUser::currentUser(), PFUserPtr());
 
-	// Let's create a new test user
+	// Let's create a new test user (also tack on some extract properties such as phone number and name)
 	PFUserPtr testUser = PFUser::user();
 	testUser->setUsername("test_logInWithUsernameAndPassword");
 	testUser->setEmail("test_logInWithUsernameAndPassword@parse.com");
 	testUser->setPassword("testPassword");
+	testUser->setObjectForKey(QString("315-707-8923"), "phoneNumber");
+	testUser->setObjectForKey(QString("Bill"), "firstName");
+	testUser->setObjectForKey(QString("Lumbergh"), "lastName");
 	bool signedUp = PFUser::signUpWithUser(testUser);
 	QCOMPARE(signedUp, true);
 	QCOMPARE(PFUser::currentUser().data(), testUser.data());
@@ -388,6 +410,14 @@ void TestPFUser::test_logInWithUsernameAndPassword()
 	QCOMPARE(validUser.isNull(), false);
 	QCOMPARE(PFUser::currentUser().data(), validUser.data());
 	QCOMPARE(validUser->isAuthenticated(), true);
+
+	// Check all the user properties (password should be NULL b/c Parse won't return it)
+	QCOMPARE(validUser->username(), QString("test_logInWithUsernameAndPassword"));
+	QCOMPARE(validUser->email(), QString("test_logInWithUsernameAndPassword@parse.com"));
+	QCOMPARE(validUser->password(), password);
+	QCOMPARE(validUser->objectForKey("phoneNumber").toString(), QString("315-707-8923"));
+	QCOMPARE(validUser->objectForKey("firstName").toString(), QString("Bill"));
+	QCOMPARE(validUser->objectForKey("lastName").toString(), QString("Lumbergh"));
 
 	// Delete our test user (valid user now) from the cloud to cleanup
 	bool deletedUser = validUser->deleteObject();
@@ -625,6 +655,41 @@ void TestPFUser::test_toJson()
 void TestPFUser::test_className()
 {
 	QCOMPARE(_defaultUser->className(), QString("PFUser"));
+}
+
+void TestPFUser::test_fetchingUsers()
+{
+	// Sign up a test user with a few properties
+	PFUserPtr testUser = PFUser::user();
+	testUser->setUsername("test_fetchingUsers");
+	testUser->setEmail("test_fetchingUsers@parse.com");
+	testUser->setPassword("testPassword");
+	testUser->setObjectForKey(QString("315-707-8923"), "phoneNumber");
+	testUser->setObjectForKey(QString("Bill"), "firstName");
+	testUser->setObjectForKey(QString("Lumbergh"), "lastName");
+	bool signedUp = PFUser::signUpWithUser(testUser);
+	QCOMPARE(signedUp, true);
+
+	// Create a new user from the objectId and fetch the user with the PFObject fetch method
+	PFUserPtr cloudUser = PFUser::userWithObjectId(testUser->objectId());
+	QCOMPARE(cloudUser->fetch(), true);
+
+	// Test the fetched properties to ensure we can use the PFObject::fetch methods with PFUsers
+	QCOMPARE(cloudUser->username(), QString("test_fetchingUsers"));
+	QCOMPARE(cloudUser->email(), QString("test_fetchingUsers@parse.com"));
+	QCOMPARE(cloudUser->password().isEmpty(), true);
+	QCOMPARE(cloudUser->objectForKey("phoneNumber").toString(), QString("315-707-8923"));
+	QCOMPARE(cloudUser->objectForKey("firstName").toString(), QString("Bill"));
+	QCOMPARE(cloudUser->objectForKey("lastName").toString(), QString("Lumbergh"));
+
+	// Try to delete the cloud user (should fail since the user isn't authenticated)
+	PFErrorPtr deletedCloudUserError;
+	bool deletedCloudUser = cloudUser->deleteObject(deletedCloudUserError);
+	QCOMPARE(deletedCloudUser, false);
+	QCOMPARE(deletedCloudUserError->errorCode(), kPFErrorUserCannotBeAlteredWithoutSession);
+
+	// Cleanup - Delete the authenticated test user
+	QCOMPARE(testUser->deleteObject(), true);
 }
 
 DECLARE_TEST(TestPFUser)

@@ -56,6 +56,21 @@ PFUserPtr PFUser::user()
 	return PFUserPtr(new PFUser(), &QObject::deleteLater);
 }
 
+PFUserPtr PFUser::userWithObjectId(const QString& objectId)
+{
+	if (objectId.isEmpty())
+	{
+		qWarning() << "PFUser::userWithObjectId failed because the objectId is empty";
+		return PFUserPtr();
+	}
+	else
+	{
+		PFUserPtr user = PFUser::user();
+		user->_objectId = objectId;
+		return user;
+	}
+}
+
 PFUserPtr PFUser::userFromVariant(const QVariant& variant)
 {
 	PFSerializablePtr serializable = PFSerializable::fromVariant(variant);
@@ -298,8 +313,8 @@ void PFUser::requestPasswordResetForEmailInBackground(const QString& email, QObj
 
 QVariant PFUser::fromJson(const QJsonObject& jsonObject)
 {
-	PFUserPtr user = PFUser::user();
-	user->_objectId = jsonObject["objectId"].toString();
+	QString objectId = jsonObject["objectId"].toString();
+	PFUserPtr user = PFUser::userWithObjectId(objectId);
 
 	return PFSerializable::toVariant(user);
 }
@@ -402,11 +417,20 @@ void PFUser::createSignUpNetworkRequest(QNetworkRequest& request, QByteArray& da
 	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
 	request.setRawHeader(QString("Content-Type").toUtf8(), QString("application/json").toUtf8());
 
-	// Create a JSON object out of our keys
+	// Create a JSON object out of all our properties
 	QJsonObject jsonObject;
+	foreach (const QString& key, _properties.keys())
+	{
+		QVariant objectToSerialize = _properties[key];
+		jsonObject[key] = convertDataToJson(objectToSerialize);
+	}
+
+	// Add the keys not tracked in the child objects
 	jsonObject["username"] = _username;
 	jsonObject["email"] = _email;
 	jsonObject["password"] = _password;
+
+	// Convert the json object into compact JSON
 	data = QJsonDocument(jsonObject).toJson(QJsonDocument::Compact);
 }
 
@@ -466,20 +490,11 @@ void PFUser::createSaveNetworkRequest(QNetworkRequest& request, QByteArray& data
 
 QNetworkRequest PFUser::createDeleteObjectNetworkRequest()
 {
-	QNetworkRequest request;
-	if (!isAuthenticated())
-	{
-		qFatal("PFUser::createSaveNetworkRequest failed because the user has not been authenticated");
-	}
-	else
-	{
-		// Create the request to use for deleting the user
-		QUrl url = QUrl(QString("https://api.parse.com/1/users/") + _objectId);
-		request = QNetworkRequest(url);
-		request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
-		request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
-		request.setRawHeader(QString("X-Parse-Session-Token").toUtf8(), _sessionToken.toUtf8());
-	}
+	QUrl url = QUrl(QString("https://api.parse.com/1/users/") + _objectId);
+	QNetworkRequest request(url);
+	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
+	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
+	request.setRawHeader(QString("X-Parse-Session-Token").toUtf8(), _sessionToken.toUtf8());
 
 	return request;
 }
@@ -532,15 +547,9 @@ bool PFUser::deserializeLogInNetworkReply(QNetworkReply* networkReply, PFErrorPt
 	// Extract the JSON payload
 	if (networkReply->error() == QNetworkReply::NoError) // SUCCESS
 	{
-		// Update our info with the payload
-		_username = jsonObject["username"].toString();
-		_email = jsonObject["email"].toString();
-		_objectId = jsonObject["objectId"].toString();
-		_sessionToken = jsonObject["sessionToken"].toString();
-		QString createdAt = jsonObject["createdAt"].toString();
-		_createdAt = PFDateTime::dateTimeFromParseString(createdAt);
-		QString updatedAt = jsonObject["updatedAt"].toString();
-		_updatedAt = PFDateTime::dateTimeFromParseString(updatedAt);
+		// Deserialize the json into our properties variant map and strip out the instance members
+		_properties = convertJsonToVariant(jsonObject).toMap();
+		stripInstanceMembersFromProperties();
 
 		return true;
 	}
@@ -584,17 +593,30 @@ bool PFUser::deserializeFetchNetworkReply(QNetworkReply* networkReply, PFErrorPt
 
 	// If it succeeded, let's extract the username and email properties
 	if (success)
-	{
-		// Manually set the username and remove from the child objects map
-		if (_childObjects.contains("username"))
-			_username = _childObjects.take("username").toString();
-
-		// Manually set the email and remove from the child objects map
-		if (_childObjects.contains("email"))
-			_email = _childObjects.take("email").toString();
-	}
+		stripInstanceMembersFromProperties();
 
 	return success;
+}
+
+#pragma mark - Recursive JSON Conversion Helper Methods
+void PFUser::stripInstanceMembersFromProperties()
+{
+	// First make sure to call the parent method to get our base stripping to occur
+	PFObject::stripInstanceMembersFromProperties();
+
+	// Now let's strip out the PFUser specific properties
+
+	// username
+	if (_properties.contains("username"))
+		_username = _properties.take("username").toString();
+
+	// email
+	if (_properties.contains("email"))
+		_email = _properties.take("email").toString();
+
+	// sessionToken
+	if (_properties.contains("sessionToken"))
+		_sessionToken = _properties.take("sessionToken").toString();
 }
 
 }	// End of parse namespace
