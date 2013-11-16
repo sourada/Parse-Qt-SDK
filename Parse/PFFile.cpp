@@ -182,7 +182,7 @@ PFFilePtr PFFile::fileWithNameAndUrl(const QString& name, const QString& url)
 	}
 }
 
-#pragma mark - Public User API Methods
+#pragma mark - Object Info Getter Methods
 
 const QString& PFFile::filepath()
 {
