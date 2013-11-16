@@ -68,7 +68,7 @@ private slots:
 	// PFSerializable Methods
 	void test_fromJson();
 	void test_toJson();
-	void test_className();
+	void test_pfClassName();
 
 private:
 
@@ -90,7 +90,7 @@ void TestPFACL::test_ACLFromVariant()
 	// Valid Case
 	PFACLPtr acl = PFACL::ACL();
 	acl->setPublicReadAccess(true);
-	QVariant aclVariant = PFSerializable::toVariant(acl);
+	QVariant aclVariant = PFACL::toVariant(acl);
 	PFACLPtr convertedACL = PFACL::ACLFromVariant(aclVariant);
 	QCOMPARE(convertedACL.isNull(), false);
 	QCOMPARE(convertedACL->publicReadAccess(), true);
@@ -395,10 +395,10 @@ void TestPFACL::test_toJson()
 	QCOMPARE(removalJsonString, QString("{}"));
 }
 
-void TestPFACL::test_className()
+void TestPFACL::test_pfClassName()
 {
 	PFACLPtr acl = PFACL::ACL();
-	QCOMPARE(acl->className(), QString("PFACL"));
+	QCOMPARE(acl->pfClassName(), QString("PFACL"));
 }
 
 DECLARE_TEST(TestPFACL)

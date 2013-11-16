@@ -37,7 +37,7 @@ private slots:
 	// PFSerializable Methods
 	void test_fromJson();
 	void test_toJson();
-	void test_className();
+	void test_pfClassName();
 };
 
 void TestPFDateTime::test_dateTimeFromParseString()
@@ -75,7 +75,7 @@ void TestPFDateTime::test_dateTimeFromVariant()
 {
 	// Valid Case
 	PFDateTimePtr dateTime = PFDateTime::dateTimeFromDateTime(QDateTime::currentDateTime());
-	QVariant dateTimeVariant = PFSerializable::toVariant(dateTime);
+	QVariant dateTimeVariant = PFDateTime::toVariant(dateTime);
 	PFDateTimePtr convertedDateTime = PFDateTime::dateTimeFromVariant(dateTimeVariant);
 	QCOMPARE(convertedDateTime.isNull(), false);
 	QCOMPARE(convertedDateTime->dateTime().toLocalTime().date(), QDate::currentDate());
@@ -138,11 +138,11 @@ void TestPFDateTime::test_toJson()
 	QCOMPARE(jsonObject["iso"].toString(), QString("2013-11-12T13:16:47.348Z"));
 }
 
-void TestPFDateTime::test_className()
+void TestPFDateTime::test_pfClassName()
 {
 	QString parseDateString = "2013-09-15T09:32:00.123Z";
 	PFDateTimePtr pfDateTime = PFDateTime::dateTimeFromParseString(parseDateString);
-	QCOMPARE(pfDateTime->className(), QString("PFDateTime"));
+	QCOMPARE(pfDateTime->pfClassName(), QString("PFDateTime"));
 }
 
 DECLARE_TEST(TestPFDateTime)

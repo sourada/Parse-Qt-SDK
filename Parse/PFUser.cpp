@@ -36,7 +36,7 @@ PFUser::PFUser() : PFObject(),
 	_sessionToken("")
 {
 	qDebug().nospace() << "Created PFUser(" << QString().sprintf("%8p", this) << ")";
-	_parseClassName = "_User";
+	_className = "_User";
 }
 
 PFUser::~PFUser()
@@ -73,7 +73,7 @@ PFUserPtr PFUser::userWithObjectId(const QString& objectId)
 
 PFUserPtr PFUser::userFromVariant(const QVariant& variant)
 {
-	PFSerializablePtr serializable = PFSerializable::fromVariant(variant);
+	PFSerializablePtr serializable = variant.value<PFSerializablePtr>();
 	if (!serializable.isNull())
 		return serializable.objectCast<PFUser>();
 
@@ -338,7 +338,7 @@ QVariant PFUser::fromJson(const QJsonObject& jsonObject)
 	QString objectId = jsonObject["objectId"].toString();
 	PFUserPtr user = PFUser::userWithObjectId(objectId);
 
-	return PFSerializable::toVariant(user);
+	return toVariant(user);
 }
 
 bool PFUser::toJson(QJsonObject& jsonObject)
@@ -351,13 +351,13 @@ bool PFUser::toJson(QJsonObject& jsonObject)
 	else
 	{
 		jsonObject["__type"] = QString("Pointer");
-		jsonObject["className"] = _parseClassName;
+		jsonObject["className"] = _className;
 		jsonObject["objectId"] = _objectId;
 		return true;
 	}
 }
 
-const QString PFUser::className() const
+const QString PFUser::pfClassName() const
 {
 	return "PFUser";
 }

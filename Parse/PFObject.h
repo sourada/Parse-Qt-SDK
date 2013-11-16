@@ -49,7 +49,7 @@ public:
 	PFACLPtr ACL();
 
 	// Object Info Getter Methods
-	virtual const QString parseClassName();
+	virtual const QString className();
 	const QString& objectId();
 	PFDateTimePtr createdAt();
 	PFDateTimePtr updatedAt();
@@ -86,7 +86,7 @@ public:
 	// PFSerializable Methods
 	static QVariant fromJson(const QJsonObject& jsonObject);
 	virtual bool toJson(QJsonObject& jsonObject);
-	virtual const QString className() const;
+	virtual const QString pfClassName() const;
 
 protected slots:
 
@@ -128,7 +128,7 @@ protected:
 	virtual void stripInstanceMembersFromProperties();
 
 	// Instance members
-	QString				_parseClassName;
+	QString				_className;
 	QString				_objectId;
 	PFACLPtr			_acl;
 	PFDateTimePtr		_createdAt;

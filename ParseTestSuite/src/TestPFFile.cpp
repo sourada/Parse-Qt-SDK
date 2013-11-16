@@ -142,7 +142,7 @@ private slots:
 	// PFSerializable Methods
 	void test_fromJson();
 	void test_toJson();
-	void test_className();
+	void test_pfClassName();
 
 private:
 
@@ -236,7 +236,7 @@ void TestPFFile::test_fileFromVariant()
 {
 	// Valid Case
 	PFFilePtr file = PFFile::fileWithNameAndData("tutorialFile.txt", _data);
-	QVariant fileVariant = PFSerializable::toVariant(file);
+	QVariant fileVariant = PFFile::toVariant(file);
 	PFFilePtr convertedFile = PFFile::fileFromVariant(fileVariant);
 	QCOMPARE(convertedFile.isNull(), false);
 	QCOMPARE(convertedFile->name(), QString("tutorialFile.txt"));
@@ -587,12 +587,12 @@ void TestPFFile::test_toJson()
 	QCOMPARE(jsonObject["name"].toString(), _nameUrlFile->name());
 }
 
-void TestPFFile::test_className()
+void TestPFFile::test_pfClassName()
 {
-	QCOMPARE(_dataFile->className(), QString("PFFile"));
-	QCOMPARE(_nameDataFile->className(), QString("PFFile"));
-	QCOMPARE(_nameContentsFile->className(), QString("PFFile"));
-	QCOMPARE(_nameUrlFile->className(), QString("PFFile"));
+	QCOMPARE(_dataFile->pfClassName(), QString("PFFile"));
+	QCOMPARE(_nameDataFile->pfClassName(), QString("PFFile"));
+	QCOMPARE(_nameContentsFile->pfClassName(), QString("PFFile"));
+	QCOMPARE(_nameUrlFile->pfClassName(), QString("PFFile"));
 }
 
 DECLARE_TEST(TestPFFile)

@@ -30,7 +30,7 @@ PFObject::PFObject()
 {
 	qDebug().nospace() << "Created PFObject(" << QString().sprintf("%8p", this) << ")";
 
-	_parseClassName = "";
+	_className = "";
 	_objectId = "";
 	_acl = PFACLPtr();
 	_createdAt = PFDateTimePtr();
@@ -61,7 +61,7 @@ PFObjectPtr PFObject::objectWithClassName(const QString& className)
 	{
 		// Create a new PFObject and set the parse class name
 		PFObjectPtr object = PFObjectPtr(new PFObject(), &QObject::deleteLater);
-		object->_parseClassName = className;
+		object->_className = className;
 
 		// Add the default acl if set
 		PFACLPtr defaultACL;
@@ -98,7 +98,7 @@ PFObjectPtr PFObject::objectWithClassName(const QString& className, const QStrin
 	else
 	{
 		PFObjectPtr object = PFObjectPtr(new PFObject(), &QObject::deleteLater);
-		object->_parseClassName = className;
+		object->_className = className;
 		object->_objectId = objectId;
 
 		return object;
@@ -107,7 +107,7 @@ PFObjectPtr PFObject::objectWithClassName(const QString& className, const QStrin
 
 PFObjectPtr PFObject::objectFromVariant(const QVariant& variant)
 {
-	PFSerializablePtr serializable = PFSerializable::fromVariant(variant);
+	PFSerializablePtr serializable = variant.value<PFSerializablePtr>();
 	if (!serializable.isNull())
 		return serializable.objectCast<PFObject>();
 
@@ -125,7 +125,7 @@ void PFObject::setObjectForKey(const QVariant& object, const QString& key)
 
 void PFObject::setObjectForKey(PFSerializablePtr object, const QString& key)
 {
-	setObjectForKey(PFSerializable::toVariant(object), key);
+	setObjectForKey(toVariant(object), key);
 }
 
 bool PFObject::removeObjectForKey(const QString& key)
@@ -224,7 +224,7 @@ void PFObject::setACL(PFACLPtr acl)
 	if (acl.isNull())
 		removeObjectForKey("ACL");
 	else
-		setObjectForKey(PFSerializable::toVariant(acl), "ACL");
+		setObjectForKey(toVariant(acl), "ACL");
 }
 
 PFACLPtr PFObject::ACL()
@@ -234,9 +234,9 @@ PFACLPtr PFObject::ACL()
 
 #pragma mark - Object Info Getter Methods
 
-const QString PFObject::parseClassName()
+const QString PFObject::className()
 {
-	return _parseClassName;
+	return _className;
 }
 
 const QString& PFObject::objectId()
@@ -535,7 +535,7 @@ QVariant PFObject::fromJson(const QJsonObject& jsonObject)
 	QString objectId = jsonObject["objectId"].toString();
 	PFObjectPtr object = objectWithClassName(className, objectId);
 
-	return PFSerializable::toVariant(object);
+	return toVariant(object);
 }
 
 bool PFObject::toJson(QJsonObject& jsonObject)
@@ -548,13 +548,13 @@ bool PFObject::toJson(QJsonObject& jsonObject)
 	else
 	{
 		jsonObject["__type"] = QString("Pointer");
-		jsonObject["className"] = _parseClassName;
+		jsonObject["className"] = _className;
 		jsonObject["objectId"] = _objectId;
 		return true;
 	}
 }
 
-const QString PFObject::className() const
+const QString PFObject::pfClassName() const
 {
 	return "PFObject";
 }
@@ -646,7 +646,7 @@ void PFObject::createSaveNetworkRequest(QNetworkRequest& request, QByteArray& da
 {
 	// Create the url based on whether we should create or update the PFObject
 	bool updateRequired = needsUpdate();
-	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _parseClassName);
+	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _className);
 	if (updateRequired)
 		url = QUrl(url.toString() + "/" + _objectId);
 
@@ -679,7 +679,7 @@ void PFObject::createSaveNetworkRequest(QNetworkRequest& request, QByteArray& da
 
 QNetworkRequest PFObject::createDeleteObjectNetworkRequest()
 {
-	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _parseClassName + "/" + _objectId);
+	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _className + "/" + _objectId);
 	QNetworkRequest request(url);
 	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
 	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
@@ -693,7 +693,7 @@ QNetworkRequest PFObject::createDeleteObjectNetworkRequest()
 
 QNetworkRequest PFObject::createFetchNetworkRequest()
 {
-	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _parseClassName + "/" + _objectId);
+	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _className + "/" + _objectId);
 	QNetworkRequest request(url);
 	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
 	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
@@ -721,13 +721,13 @@ bool PFObject::deserializeSaveNetworkReply(QNetworkReply* networkReply, bool upd
 			QString createdAt = jsonObject["createdAt"].toString();
 			_createdAt = PFDateTime::dateTimeFromParseString(createdAt);
 			_objectId = jsonObject["objectId"].toString();
-			qDebug().nospace() << "Created Object:" << _parseClassName << " with objectId:" << _objectId;
+			qDebug().nospace() << "Created Object:" << _className << " with objectId:" << _objectId;
 		}
 		else // UPDATED
 		{
 			QString updatedAt = jsonObject["updatedAt"].toString();
 			_updatedAt = PFDateTime::dateTimeFromParseString(updatedAt);
-			qDebug().nospace() << "Updated Object:" << _parseClassName << " with objectId:" << _objectId;
+			qDebug().nospace() << "Updated Object:" << _className << " with objectId:" << _objectId;
 		}
 
 		return true;

@@ -154,7 +154,7 @@ private slots:
 	// PFSerializable Methods
 	void test_fromJson();
 	void test_toJson();
-	void test_className();
+	void test_pfClassName();
 
 	//=================================================================
 	//                    Additional Tests
@@ -359,7 +359,7 @@ void TestPFObject::test_objectWithClassName()
 	// Valid Object - Level
 	PFObjectPtr level = PFObject::objectWithClassName("Level");
 	QCOMPARE(level.isNull(), false);
-	QCOMPARE(level->parseClassName(), QString("Level"));
+	QCOMPARE(level->className(), QString("Level"));
 	QCOMPARE(level->objectId(), QString(""));
 	QCOMPARE(level->ACL().isNull(), true);
 	QCOMPARE(level->createdAt(), PFDateTimePtr());
@@ -428,7 +428,7 @@ void TestPFObject::test_objectWithClassNameAndObjectId()
 	// Valid Object
 	PFObjectPtr level = PFObject::objectWithClassName("Level", "309di3j09f");
 	QCOMPARE(level.isNull(), false);
-	QCOMPARE(level->parseClassName(), QString("Level"));
+	QCOMPARE(level->className(), QString("Level"));
 	QCOMPARE(level->objectId(), QString("309di3j09f"));
 	QCOMPARE(level->ACL().isNull(), true);
 	QCOMPARE(level->createdAt(), PFDateTimePtr());
@@ -439,10 +439,10 @@ void TestPFObject::test_objectFromVariant()
 {
 	// Valid Case
 	PFObjectPtr level = PFObject::objectWithClassName("Level");
-	QVariant levelVariant = PFSerializable::toVariant(level);
+	QVariant levelVariant = PFObject::toVariant(level);
 	PFObjectPtr convertedLevel = PFObject::objectFromVariant(levelVariant);
 	QCOMPARE(convertedLevel.isNull(), false);
-	QCOMPARE(convertedLevel->parseClassName(), QString("Level"));
+	QCOMPARE(convertedLevel->className(), QString("Level"));
 
 	// Invalid Case - QString
 	QVariant stringVariant = QString("StringVariant");
@@ -451,13 +451,13 @@ void TestPFObject::test_objectFromVariant()
 
 	// Invalid Case - PFDateTime
 	PFDateTimePtr dateTime = PFDateTime::dateTimeFromDateTime(QDateTime::currentDateTime());
-	QVariant dateTimeVariant = PFSerializable::toVariant(dateTime);
+	QVariant dateTimeVariant = PFDateTime::toVariant(dateTime);
 	PFObjectPtr dateTimeObject = PFObject::objectFromVariant(dateTimeVariant);
 	QCOMPARE(dateTimeObject.isNull(), true);
 
 	// Invalid Case - PFFile
 	PFFilePtr file = PFFile::fileWithNameAndData("tutorialFile.txt", _data);
-	QVariant fileVariant = PFSerializable::toVariant(file);
+	QVariant fileVariant = PFFile::toVariant(file);
 	PFObjectPtr fileObject = PFObject::objectFromVariant(fileVariant);
 	QCOMPARE(fileObject.isNull(), true);
 }
@@ -550,7 +550,7 @@ void TestPFObject::test_setObjectForKeyWithSerializable()
 	PFObjectPtr town2 = PFObject::objectWithClassName("Town");
 	town2->setObjectForKey(QString("Burial Grounds"), "name");
 	QVariantList towns;
-	towns << PFSerializable::toVariant(town1) << PFSerializable::toVariant(town2);
+	towns << PFObject::toVariant(town1) << PFObject::toVariant(town2);
 	level->setObjectForKey(towns, "towns");
 	QVariantList levelTowns = level->objectForKey("towns").toList();
 	QCOMPARE(levelTowns.count(), 2);
@@ -580,7 +580,7 @@ void TestPFObject::test_removeObjectForKey()
 	QCOMPARE(lamp->save(), true);
 
 	// Fetch the object from the server and verify the key was saved
-	PFObjectPtr cloudLamp = PFObject::objectWithClassName(lamp->parseClassName(), lamp->objectId());
+	PFObjectPtr cloudLamp = PFObject::objectWithClassName(lamp->className(), lamp->objectId());
 	QCOMPARE(cloudLamp->fetch(), true);
 	QCOMPARE(cloudLamp->objectForKey("furnitureType").toString(), QString("Lamp"));
 
@@ -915,7 +915,7 @@ void TestPFObject::test_ACL()
 void TestPFObject::test_parseClassName()
 {
 	PFObjectPtr level = PFObject::objectWithClassName("Level");
-	QCOMPARE(level->parseClassName(), QString("Level"));
+	QCOMPARE(level->className(), QString("Level"));
 }
 
 void TestPFObject::test_objectId()
@@ -1021,7 +1021,7 @@ void TestPFObject::test_save()
 	PFObjectPtr level = PFObject::objectWithClassName("Level");
 	level->setObjectForKey(QString("Act I"), "name");
 	QVariantList characters;
-	characters << PFSerializable::toVariant(diablo) << PFSerializable::toVariant(wizard);
+	characters << PFObject::toVariant(diablo) << PFObject::toVariant(wizard);
 	level->setObjectForKey(characters, "characters");
 	level->setObjectForKey(map, "map");
 
@@ -1090,7 +1090,7 @@ void TestPFObject::test_saveWithError()
 	PFObjectPtr level = PFObject::objectWithClassName("Level");
 	level->setObjectForKey(QString("Act I"), "name");
 	QVariantList characters;
-	characters << PFSerializable::toVariant(diablo) << PFSerializable::toVariant(wizard);
+	characters << PFObject::toVariant(diablo) << PFObject::toVariant(wizard);
 	level->setObjectForKey(characters, "characters");
 	level->setObjectForKey(map, "map");
 
@@ -1187,7 +1187,7 @@ void TestPFObject::test_saveInBackground()
 	PFObjectPtr level = PFObject::objectWithClassName("Level");
 	level->setObjectForKey(QString("Act I"), "name");
 	QVariantList characters;
-	characters << PFSerializable::toVariant(diablo) << PFSerializable::toVariant(wizard);
+	characters << PFObject::toVariant(diablo) << PFObject::toVariant(wizard);
 	level->setObjectForKey(characters, "characters");
 	level->setObjectForKey(map, "map");
 
@@ -1265,7 +1265,7 @@ void TestPFObject::test_deleteObject()
 	PFObjectPtr level = PFObject::objectWithClassName("Level");
 	level->setObjectForKey(QString("Act I"), "name");
 	QVariantList characters;
-	characters << PFSerializable::toVariant(diablo) << PFSerializable::toVariant(wizard);
+	characters << PFObject::toVariant(diablo) << PFObject::toVariant(wizard);
 	level->setObjectForKey(characters, "characters");
 	level->setObjectForKey(map, "map");
 
@@ -1329,7 +1329,7 @@ void TestPFObject::test_deleteObjectWithError()
 	PFObjectPtr level = PFObject::objectWithClassName("Level");
 	level->setObjectForKey(QString("Act I"), "name");
 	QVariantList characters;
-	characters << PFSerializable::toVariant(diablo) << PFSerializable::toVariant(wizard);
+	characters << PFObject::toVariant(diablo) << PFObject::toVariant(wizard);
 	level->setObjectForKey(characters, "characters");
 	level->setObjectForKey(map, "map");
 
@@ -1398,7 +1398,7 @@ void TestPFObject::test_deleteObjectInBackground()
 	PFObjectPtr level = PFObject::objectWithClassName("Level");
 	level->setObjectForKey(QString("Act I"), "name");
 	QVariantList characters;
-	characters << PFSerializable::toVariant(diablo) << PFSerializable::toVariant(wizard);
+	characters << PFObject::toVariant(diablo) << PFObject::toVariant(wizard);
 	level->setObjectForKey(characters, "characters");
 	level->setObjectForKey(map, "map");
 
@@ -1475,7 +1475,7 @@ void TestPFObject::test_isDataAvailable()
 	QCOMPARE(newObject->isDataAvailable(), true);
 
 	// Case 2 - fetched object returns true
-	PFObjectPtr axe = PFObject::objectWithClassName(_axe->parseClassName(), _axe->objectId());
+	PFObjectPtr axe = PFObject::objectWithClassName(_axe->className(), _axe->objectId());
 	QCOMPARE(axe->isDataAvailable(), false);
 	QCOMPARE(axe->fetch(), true);
 	QCOMPARE(axe->isDataAvailable(), true);
@@ -1840,7 +1840,7 @@ void TestPFObject::test_fetchIfNeeded()
 	QCOMPARE(newObject->isDataAvailable(), true);
 
 	// Case 2 - server object fetch if needed
-	PFObjectPtr axe = PFObject::objectWithClassName(_axe->parseClassName(), _axe->objectId());
+	PFObjectPtr axe = PFObject::objectWithClassName(_axe->className(), _axe->objectId());
 	QCOMPARE(axe->isDataAvailable(), false);
 	QCOMPARE(axe->fetchIfNeeded(), true);
 	QCOMPARE(axe->isDataAvailable(), true);
@@ -1864,7 +1864,7 @@ void TestPFObject::test_fetchIfNeededWithError()
 	QCOMPARE(newObject->isDataAvailable(), true);
 
 	// Case 2 - server object fetch if needed
-	PFObjectPtr axe = PFObject::objectWithClassName(_axe->parseClassName(), _axe->objectId());
+	PFObjectPtr axe = PFObject::objectWithClassName(_axe->className(), _axe->objectId());
 	QCOMPARE(axe->isDataAvailable(), false);
 	PFErrorPtr axeFetchError;
 	QCOMPARE(axe->fetchIfNeeded(axeFetchError), true);
@@ -1897,7 +1897,7 @@ void TestPFObject::test_fetchIfNeededInBackground()
 	QCOMPARE(newObject->isDataAvailable(), true);
 
 	// Case 2 - server object fetch if needed
-	PFObjectPtr axe = PFObject::objectWithClassName(_axe->parseClassName(), _axe->objectId());
+	PFObjectPtr axe = PFObject::objectWithClassName(_axe->className(), _axe->objectId());
 	QCOMPARE(axe->isDataAvailable(), false);
 	QCOMPARE(axe->fetchIfNeededInBackground(this, SLOT(fetchCompleted(bool, PFErrorPtr))), true);
 	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
@@ -1933,7 +1933,7 @@ void TestPFObject::test_fromJson()
 
 	// Test the results
 	QCOMPARE(convertedSword.isNull(), false);
-	QCOMPARE(convertedSword->className(), _sword->className());
+	QCOMPARE(convertedSword->pfClassName(), _sword->pfClassName());
 	QCOMPARE(convertedSword->objectId(), _sword->objectId());
 }
 
@@ -1956,10 +1956,10 @@ void TestPFObject::test_toJson()
 	QCOMPARE(jsonObject["objectId"].toString(), QString("39sdfji390j"));
 }
 
-void TestPFObject::test_className()
+void TestPFObject::test_pfClassName()
 {
 	PFObjectPtr level = PFObject::objectWithClassName("Level");
-	QCOMPARE(level->className(), QString("PFObject"));
+	QCOMPARE(level->pfClassName(), QString("PFObject"));
 }
 
 void TestPFObject::test_savingWithPermissions()
@@ -2017,14 +2017,14 @@ void TestPFObject::test_fetchingWithPermissions()
 	QCOMPARE(sofa->save(), true);
 
 	// Try to fetch the sofa from the cloud (should succeed since we're logged in as user)
-	PFObjectPtr cloudSofa = PFObject::objectWithClassName(sofa->parseClassName(), sofa->objectId());
+	PFObjectPtr cloudSofa = PFObject::objectWithClassName(sofa->className(), sofa->objectId());
 	QCOMPARE(cloudSofa->fetch(), true);
 
 	// Let's log out
 	PFUser::logOut();
 
 	// Try to fetch the cloud sofa again and this time it should fail b/c we're not authenticated
-	PFObjectPtr cloudSofa2 = PFObject::objectWithClassName(sofa->parseClassName(), sofa->objectId());
+	PFObjectPtr cloudSofa2 = PFObject::objectWithClassName(sofa->className(), sofa->objectId());
 	QCOMPARE(cloudSofa2->fetch(), false);
 
 	// Let's try to delete the sofa and the user (both should fail b/c we're not logged in)

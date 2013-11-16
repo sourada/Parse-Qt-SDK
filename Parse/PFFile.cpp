@@ -154,7 +154,7 @@ PFFilePtr PFFile::fileWithNameAndContentsAtPath(const QString& name, const QStri
 
 PFFilePtr PFFile::fileFromVariant(const QVariant& variant)
 {
-	PFSerializablePtr serializable = PFSerializable::fromVariant(variant);
+	PFSerializablePtr serializable = variant.value<PFSerializablePtr>();
 	if (!serializable.isNull())
 		return serializable.objectCast<PFFile>();
 
@@ -414,7 +414,7 @@ QVariant PFFile::fromJson(const QJsonObject& jsonObject)
 	QString url = jsonObject["url"].toString();
 	PFFilePtr file = PFFile::fileWithNameAndUrl(name, url);
 
-	return PFSerializable::toVariant(file);
+	return toVariant(file);
 }
 
 bool PFFile::toJson(QJsonObject& jsonObject)
@@ -432,7 +432,7 @@ bool PFFile::toJson(QJsonObject& jsonObject)
 	}
 }
 
-const QString PFFile::className() const
+const QString PFFile::pfClassName() const
 {
 	return "PFFile";
 }

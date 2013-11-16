@@ -99,7 +99,7 @@ public:
 	// PFSerializable Methods
 	static QVariant fromJson(const QJsonObject& jsonObject);
 	virtual bool toJson(QJsonObject& jsonObject);
-	virtual const QString className() const;
+	virtual const QString pfClassName() const;
 
 protected slots:
 

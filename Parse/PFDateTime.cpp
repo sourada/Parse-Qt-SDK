@@ -63,7 +63,7 @@ PFDateTimePtr PFDateTime::dateTimeFromDateTime(const QDateTime& dateTime)
 
 PFDateTimePtr PFDateTime::dateTimeFromVariant(const QVariant& variant)
 {
-	PFSerializablePtr serializable = PFSerializable::fromVariant(variant);
+	PFSerializablePtr serializable = variant.value<PFSerializablePtr>();
 	if (!serializable.isNull())
 		return serializable.objectCast<PFDateTime>();
 
@@ -88,7 +88,7 @@ QVariant PFDateTime::fromJson(const QJsonObject& jsonObject)
 {
 	QString parseDateString = jsonObject["iso"].toString();
 	PFDateTimePtr dateTime = PFDateTime::dateTimeFromParseString(parseDateString);
-	return PFSerializable::toVariant(dateTime);
+	return toVariant(dateTime);
 }
 
 bool PFDateTime::toJson(QJsonObject& jsonObject)
@@ -98,7 +98,7 @@ bool PFDateTime::toJson(QJsonObject& jsonObject)
 	return true;
 }
 
-const QString PFDateTime::className() const
+const QString PFDateTime::pfClassName() const
 {
 	return "PFDateTime";
 }

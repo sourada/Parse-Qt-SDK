@@ -123,7 +123,7 @@ private slots:
 	// PFSerializable Methods
 	void test_fromJson();
 	void test_toJson();
-	void test_className();
+	void test_pfClassName();
 
 	//=================================================================
 	//                    Additional Tests
@@ -196,7 +196,7 @@ void TestPFUser::test_userFromVariant()
 	// Valid Case
 	PFUserPtr user = PFUser::user();
 	user->setUsername("test_userFromVariant");
-	QVariant userVariant = PFSerializable::toVariant(user);
+	QVariant userVariant = PFObject::toVariant(user);
 	PFUserPtr convertedUser = PFUser::userFromVariant(userVariant);
 	QCOMPARE(convertedUser.isNull(), false);
 	QCOMPARE(convertedUser->username(), QString("test_userFromVariant"));
@@ -665,9 +665,9 @@ void TestPFUser::test_toJson()
 	QCOMPARE(deletedUser, true);
 }
 
-void TestPFUser::test_className()
+void TestPFUser::test_pfClassName()
 {
-	QCOMPARE(_defaultUser->className(), QString("PFUser"));
+	QCOMPARE(_defaultUser->pfClassName(), QString("PFUser"));
 }
 
 void TestPFUser::test_fetchingUsers()

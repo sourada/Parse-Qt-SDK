@@ -22,21 +22,20 @@
 
 namespace parse {
 
-/** Abstract class forcing the serializable api on all subclasses. */
 class PFSerializable : public QObject
 {
 public:
 
-	// Serialization Methods
+	// Serialization Methods (subclass also needs to implement a static fromJson() method)
 	virtual bool toJson(QJsonObject& jsonObject) = 0;
-	virtual const QString className() const = 0;
+	virtual const QString pfClassName() const = 0;
 
-	// Variant Conversion Helpers
+	// Converting to a variant
 	static QVariant toVariant(PFSerializablePtr serializable);
-	static PFSerializablePtr fromVariant(const QVariant& variant);
 
 protected:
 
+	// Constructor / Destructor
 	PFSerializable();
 	virtual ~PFSerializable();
 };

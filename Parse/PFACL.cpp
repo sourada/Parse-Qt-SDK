@@ -42,7 +42,7 @@ PFACLPtr PFACL::ACL()
 
 PFACLPtr PFACL::ACLFromVariant(const QVariant& variant)
 {
-	PFSerializablePtr serializable = PFSerializable::fromVariant(variant);
+	PFSerializablePtr serializable = variant.value<PFSerializablePtr>();
 	if (!serializable.isNull())
 		return serializable.objectCast<PFACL>();
 
@@ -310,7 +310,7 @@ QVariant PFACL::fromJson(const QJsonObject &jsonObject)
 	PFACLPtr ACL = PFACL::ACL();
 	ACL->_properties = jsonObject.toVariantMap();
 
-	return PFSerializable::toVariant(ACL);
+	return toVariant(ACL);
 }
 
 bool PFACL::toJson(QJsonObject& jsonObject)
@@ -319,7 +319,7 @@ bool PFACL::toJson(QJsonObject& jsonObject)
 	return true;
 }
 
-const QString PFACL::className() const
+const QString PFACL::pfClassName() const
 {
 	return "PFACL";
 }
