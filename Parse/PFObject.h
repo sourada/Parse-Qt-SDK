@@ -40,6 +40,10 @@ public:
 	QVariant objectForKey(const QString& key);
 	QStringList allKeys();
 
+	// Increment Methods
+	void incrementKey(const QString& key);
+	void incrementKeyByAmount(const QString& key, int amount);
+
 	// ACL Accessor Methods
 	void setACL(PFACLPtr acl);
 	PFACLPtr ACL();

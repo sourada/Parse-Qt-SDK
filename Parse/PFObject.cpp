@@ -162,6 +162,60 @@ QStringList PFObject::allKeys()
 	return _properties.keys();
 }
 
+#pragma mark - Increment Methods
+
+void PFObject::incrementKey(const QString& key)
+{
+	incrementKeyByAmount(key, 1);
+}
+
+void PFObject::incrementKeyByAmount(const QString& key, int amount)
+{
+	if (_properties.contains(key))
+	{
+		// Create a set of supported meta types for the variant
+		QSet<QMetaType::Type> supportedTypes;
+		supportedTypes << QMetaType::Char;
+		supportedTypes << QMetaType::UChar;
+		supportedTypes << QMetaType::Short;
+		supportedTypes << QMetaType::UShort;
+		supportedTypes << QMetaType::Int;
+		supportedTypes << QMetaType::UInt;
+		supportedTypes << QMetaType::Long;
+		supportedTypes << QMetaType::ULong;
+		supportedTypes << QMetaType::LongLong;
+		supportedTypes << QMetaType::ULongLong;
+		supportedTypes << QMetaType::Float;
+		supportedTypes << QMetaType::Double;
+
+		// Only increment the property if it is actually a number
+		QVariant property = _properties[key];
+		QMetaType::Type propertyType = (QMetaType::Type) property.type();
+		if (supportedTypes.contains(propertyType))
+		{
+			// Update the property value and push it back into the properties map
+			double value = property.toDouble();
+			value += amount;
+			QVariant newVariant = value;
+			newVariant.convert(propertyType);
+			_properties[key] = newVariant;
+
+			// Create an increment operation if the object is not new
+			if (!_objectId.isEmpty())
+			{
+				QVariantMap operation;
+				operation["__op"] = QString("Increment");
+				operation["amount"] = amount;
+				_updatedProperties[key] = operation;
+			}
+		}
+		else
+		{
+			qWarning().nospace() << "PFObject::incrementKeyByAmount failed because the property for key: " << key << " is NOT a number";
+		}
+	}
+}
+
 #pragma mark - ACL Accessor Methods
 
 void PFObject::setACL(PFACLPtr acl)

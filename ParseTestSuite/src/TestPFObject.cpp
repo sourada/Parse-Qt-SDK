@@ -76,6 +76,7 @@ private slots:
 	void cleanupTestCase()
 	{
 		deleteObjectGraph();
+		this->disconnect();
 	}
 
 	// Function init and cleanup methods (called before/after each test)
@@ -112,6 +113,10 @@ private slots:
 	void test_removeObjectForKey();
 	void test_objectForKey();
 	void test_allKeys();
+
+	// Increment Methods
+	void test_incrementKey();
+	void test_incrementKeyByAmount();
 
 	// ACL Accessor Methods
 	void test_setACL();
@@ -765,6 +770,104 @@ void TestPFObject::test_allKeys()
 	PFObjectPtr level2 = PFObject::objectWithClassName("Level");
 	QStringList level2Keys = level2->allKeys();
 	QCOMPARE(level2Keys.count(), 0);
+}
+
+void TestPFObject::test_incrementKey()
+{
+	// Invalid Case 1 - increment a key that doesn't exist
+	PFObjectPtr scoreboard = PFObject::objectWithClassName("Scoreboard");
+	QCOMPARE(scoreboard->allKeys().count(), 0);
+	scoreboard->incrementKey("score");
+	QCOMPARE(scoreboard->allKeys().count(), 0);
+
+	// Invalid Case 2 - increment a key that is not a number
+	scoreboard->setObjectForKey(QString("Really High"), "score");
+	QCOMPARE(scoreboard->objectForKey("score").toString(), QString("Really High"));
+	QCOMPARE(scoreboard->allKeys().count(), 1);
+	scoreboard->incrementKey("score");
+	QCOMPARE(scoreboard->objectForKey("score").toString(), QString("Really High"));
+	QCOMPARE(scoreboard->allKeys().count(), 1);
+
+	// Valid Case 1 - increment key (int) for object not in the cloud
+	scoreboard->removeObjectForKey("score");
+	scoreboard->setObjectForKey(27, "score");
+	QCOMPARE(scoreboard->objectForKey("score").toInt(), 27);
+	QCOMPARE((QMetaType::Type) scoreboard->objectForKey("score").type(), QMetaType::Int);
+	scoreboard->incrementKey("score");
+	QCOMPARE(scoreboard->objectForKey("score").toInt(), 28);
+	QCOMPARE((QMetaType::Type) scoreboard->objectForKey("score").type(), QMetaType::Int);
+
+	// Valid Case 2 - increment key (float) for object not in the cloud
+	scoreboard->removeObjectForKey("score");
+	scoreboard->setObjectForKey(27.085f, "score");
+	QCOMPARE(scoreboard->objectForKey("score").toFloat(), 27.085f);
+	QCOMPARE((QMetaType::Type) scoreboard->objectForKey("score").type(), QMetaType::Float);
+	scoreboard->incrementKey("score");
+	QCOMPARE(scoreboard->objectForKey("score").toFloat(), 28.085f);
+	QCOMPARE((QMetaType::Type) scoreboard->objectForKey("score").type(), QMetaType::Float);
+
+	// Valid Case 3 - increment key for cloud object
+	scoreboard->removeObjectForKey("score");
+	scoreboard->setObjectForKey(27, "score");
+	QCOMPARE(scoreboard->save(), true);
+	scoreboard->incrementKey("score");
+	QCOMPARE(scoreboard->save(), true);
+	scoreboard->removeObjectForKey("score");
+	QCOMPARE(scoreboard->allKeys().count(), 0);
+	QCOMPARE(scoreboard->fetch(), true);
+	QCOMPARE(scoreboard->objectForKey("score").toInt(), 28);
+
+	// Cleanup
+	QCOMPARE(scoreboard->deleteObject(), true);
+}
+
+void TestPFObject::test_incrementKeyByAmount()
+{
+	// Invalid Case 1 - increment a key that doesn't exist
+	PFObjectPtr scoreboard = PFObject::objectWithClassName("Scoreboard");
+	QCOMPARE(scoreboard->allKeys().count(), 0);
+	scoreboard->incrementKeyByAmount("score", 7);
+	QCOMPARE(scoreboard->allKeys().count(), 0);
+
+	// Invalid Case 2 - increment a key that is not a number
+	scoreboard->setObjectForKey(QString("Really High"), "score");
+	QCOMPARE(scoreboard->objectForKey("score").toString(), QString("Really High"));
+	QCOMPARE(scoreboard->allKeys().count(), 1);
+	scoreboard->incrementKeyByAmount("score", 10);
+	QCOMPARE(scoreboard->objectForKey("score").toString(), QString("Really High"));
+	QCOMPARE(scoreboard->allKeys().count(), 1);
+
+	// Valid Case 1 - increment key (int) for object not in the cloud
+	scoreboard->removeObjectForKey("score");
+	scoreboard->setObjectForKey(27, "score");
+	QCOMPARE(scoreboard->objectForKey("score").toInt(), 27);
+	QCOMPARE((QMetaType::Type) scoreboard->objectForKey("score").type(), QMetaType::Int);
+	scoreboard->incrementKeyByAmount("score", 10);
+	QCOMPARE(scoreboard->objectForKey("score").toInt(), 37);
+	QCOMPARE((QMetaType::Type) scoreboard->objectForKey("score").type(), QMetaType::Int);
+
+	// Valid Case 2 - increment key (float) for object not in the cloud
+	scoreboard->removeObjectForKey("score");
+	scoreboard->setObjectForKey(27.085f, "score");
+	QCOMPARE(scoreboard->objectForKey("score").toFloat(), 27.085f);
+	QCOMPARE((QMetaType::Type) scoreboard->objectForKey("score").type(), QMetaType::Float);
+	scoreboard->incrementKeyByAmount("score", 10);
+	QCOMPARE(scoreboard->objectForKey("score").toFloat(), 37.085f);
+	QCOMPARE((QMetaType::Type) scoreboard->objectForKey("score").type(), QMetaType::Float);
+
+	// Valid Case 3 - increment key for cloud object
+	scoreboard->removeObjectForKey("score");
+	scoreboard->setObjectForKey(27, "score");
+	QCOMPARE(scoreboard->save(), true);
+	scoreboard->incrementKeyByAmount("score", 10);
+	QCOMPARE(scoreboard->save(), true);
+	scoreboard->removeObjectForKey("score");
+	QCOMPARE(scoreboard->allKeys().count(), 0);
+	QCOMPARE(scoreboard->fetch(), true);
+	QCOMPARE(scoreboard->objectForKey("score").toInt(), 37);
+
+	// Cleanup
+	QCOMPARE(scoreboard->deleteObject(), true);
 }
 
 void TestPFObject::test_setACL()
