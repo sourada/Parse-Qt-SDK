@@ -6,8 +6,6 @@
 //  Copyright (c) 2013 BodyViz. All rights reserved.
 //
 
-#include <iostream>
-
 // Parse headers
 #include "PFManager.h"
 

@@ -6,7 +6,6 @@
 //  Copyright (c) 2013 BodyViz. All rights reserved.
 //
 
-#include <iostream>
 #include "PFFile.h"
 #include "PFManager.h"
 #include "TestRunner.h"
