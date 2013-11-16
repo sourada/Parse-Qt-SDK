@@ -92,8 +92,12 @@ public slots:
 		int ret = 0;
 		foreach (QObject* test, testList())
 		{
-			ret += QTest::qExec(test, _argc, _argv);
-			std::cout << "\n" << std::endl;
+			// Run only 1 test
+//			if (test->objectName() == "TestPFObject") // Comment out to run all tests
+			{
+				ret += QTest::qExec(test, _argc, _argv);
+				std::cout << "\n" << std::endl;
+			}
 		}
 
 		if (ret == 0)
