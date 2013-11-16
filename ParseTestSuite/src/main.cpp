@@ -3,7 +3,7 @@
 //  ParseTestSuite
 //
 //  Created by Christian Noon on 11/12/13.
-//  Copyright (c) 2013 BodyViz. All rights reserved.
+//  Copyright (c) 2013 Christian Noon. All rights reserved.
 //
 
 #include "TestRunner.h"

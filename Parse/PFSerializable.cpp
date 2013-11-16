@@ -3,7 +3,7 @@
 //  Parse
 //
 //  Created by Christian Noon on 11/11/13.
-//  Copyright (c) 2013 BodyViz. All rights reserved.
+//  Copyright (c) 2013 Christian Noon. All rights reserved.
 //
 
 // Parse headers

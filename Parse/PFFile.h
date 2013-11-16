@@ -3,7 +3,7 @@
 //  Parse
 //
 //  Created by Christian Noon on 11/6/13.
-//  Copyright (c) 2013 BodyViz. All rights reserved.
+//  Copyright (c) 2013 Christian Noon. All rights reserved.
 //
 
 #ifndef PARSE_PFFILE_H
