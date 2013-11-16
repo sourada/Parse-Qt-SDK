@@ -78,7 +78,7 @@ void TestPFDateTime::test_dateTimeFromVariant()
 	QVariant dateTimeVariant = PFSerializable::toVariant(dateTime);
 	PFDateTimePtr convertedDateTime = PFDateTime::dateTimeFromVariant(dateTimeVariant);
 	QCOMPARE(convertedDateTime.isNull(), false);
-	QCOMPARE(convertedDateTime->dateTime().date(), QDate::currentDate());
+	QCOMPARE(convertedDateTime->dateTime().toLocalTime().date(), QDate::currentDate());
 
 	// Invalid Case - QString
 	QVariant stringVariant = QString("StringVariant");

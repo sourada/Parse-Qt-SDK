@@ -948,7 +948,7 @@ void TestPFObject::test_createdAt()
 
 	// Retest the created at ivar
 	QCOMPARE(level->createdAt().isNull(), false);
-	QCOMPARE(level->createdAt()->dateTime().date(), QDate::currentDate());
+	QCOMPARE(level->createdAt()->dateTime().toLocalTime().date(), QDate::currentDate());
 
 	// Cleanup the object from the cloud
 	bool deleted = level->deleteObject();
@@ -975,7 +975,7 @@ void TestPFObject::test_updatedAt()
 
 	// Retest the updated at ivar (should be valid now)
 	QCOMPARE(level->updatedAt().isNull(), false);
-	QCOMPARE(level->updatedAt()->dateTime().date(), QDate::currentDate());
+	QCOMPARE(level->updatedAt()->dateTime().toLocalTime().date(), QDate::currentDate());
 
 	// Cleanup the object from the cloud
 	bool deleted = level->deleteObject();
