@@ -47,8 +47,8 @@ public:
 	}
 
 	// Replace these with your own!!!
-	static QString applicationId() { return "vs7Oeo6yTaQpESgyGYYjp1JJEgZVaemjQjc2IxHe"; }
-	static QString restApiKey() { return "F2v1G05waOu5kaDvPjAPff9JrniedgMUSFstseg8"; }
+	static QString applicationId() { return ""; }
+	static QString restApiKey() { return ""; }
 
 	static TestList& testList()
 	{
@@ -88,25 +88,34 @@ public slots:
 
 	void runAllTests()
 	{
-		// Run all the tests
-		int ret = 0;
-		foreach (QObject* test, testList())
+		// Make sure the app id and rest api key values are set
+		if (applicationId().isEmpty() || restApiKey().isEmpty())
 		{
-			// Run only 1 test
-//			if (test->objectName() == "TestPFObject") // Comment out to run all tests
-			{
-				ret += QTest::qExec(test, _argc, _argv);
-				std::cout << "\n" << std::endl;
-			}
+			qCritical() << "The Parse Test Suite can NOT be executed with a blank Application ID and/or Rest API Key...please add them to the TestRunner class";
+			QApplication::quit();
 		}
-
-		if (ret == 0)
-			std::cout << "SUCCESSFULLY COMPLETED ALL TESTS!!!\n" << std::endl;
 		else
-			std::cout << "FAILED TO COMPLETE ALL TESTS SUCCESSFULLY :-(\n" << std::endl;;
+		{
+			// Run all the tests
+			int ret = 0;
+			foreach (QObject* test, testList())
+			{
+				// Run only 1 test
+				//			if (test->objectName() == "TestPFObject") // Comment out to run all tests
+				{
+					ret += QTest::qExec(test, _argc, _argv);
+					std::cout << "\n" << std::endl;
+				}
+			}
 
-		// Kill the app
-		QApplication::quit();
+			if (ret == 0)
+				std::cout << "SUCCESSFULLY COMPLETED ALL TESTS!!!\n" << std::endl;
+			else
+				std::cout << "FAILED TO COMPLETE ALL TESTS SUCCESSFULLY :-(\n" << std::endl;;
+
+			// Kill the app
+			QApplication::quit();
+		}
 	}
 
 protected:
