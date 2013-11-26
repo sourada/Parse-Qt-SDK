@@ -10,6 +10,7 @@
 #define PARSE_PFTYPEDEFS_H
 
 // Qt headers
+#include <QList>
 #include <QSharedPointer>
 
 namespace parse {
@@ -31,6 +32,9 @@ typedef QSharedPointer<PFFile> PFFilePtr;
 typedef QSharedPointer<PFObject> PFObjectPtr;
 typedef QSharedPointer<PFSerializable> PFSerializablePtr;
 typedef QSharedPointer<PFUser> PFUserPtr;
+
+// Parse Collection Typedefs
+typedef QList<PFObjectPtr> PFObjectList;
 
 // Qt Typedefs
 typedef QSharedPointer<QByteArray> QByteArrayPtr;

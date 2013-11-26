@@ -144,6 +144,11 @@ private slots:
 	void test_saveWithError();
 	void test_saveInBackground();
 
+	// Save All Methods
+	void test_saveAll();
+	void test_saveAllWithError();
+	void test_saveAllInBackground();
+
 	// Delete Methods
 	void test_deleteObject();
 	void test_deleteObjectWithError();
@@ -1775,6 +1780,158 @@ void TestPFObject::test_saveInBackground()
 	QCOMPARE(mapDeleted, true);
 	QCOMPARE(diabloDeleted, true);
 	QCOMPARE(wizardDeleted, true);
+}
+
+void TestPFObject::test_saveAll()
+{
+	// Make a couple new objects
+	PFObjectPtr mana = PFObject::objectWithClassName("Potion");
+	mana->setObjectForKey(QString("Mana"), "name");
+	mana->setObjectForKey(QString("Blue"), "color");
+	PFObjectPtr health = PFObject::objectWithClassName("Potion");
+	health->setObjectForKey(QString("Health"), "name");
+	health->setObjectForKey(QString("Red"), "color");
+
+	// Put the objects into a list
+	PFObjectList objects;
+	objects << mana << health;
+
+	// Save them both using the save all method
+	QCOMPARE(PFObject::saveAll(objects), true);
+
+	// Mix up the properties a bit
+	mana->setObjectForKey(100, "size");
+	health->setObjectForKey(250, "size");
+
+	// Save them both using the save all method
+	QCOMPARE(PFObject::saveAll(objects), true);
+
+	// Fetch the mana from the cloud and test the attributes
+	PFObjectPtr cloudMana = PFObject::objectWithClassName("Potion", mana->objectId());
+	QCOMPARE(cloudMana->fetch(), true);
+	QCOMPARE(cloudMana->allKeys().count(), 3);
+	QCOMPARE(cloudMana->objectForKey("name").toString(), QString("Mana"));
+	QCOMPARE(cloudMana->objectForKey("color").toString(), QString("Blue"));
+	QCOMPARE(cloudMana->objectForKey("size").toInt(), 100);
+
+	// Fetch the health from the cloud and test the attributes
+	PFObjectPtr cloudHealth = PFObject::objectWithClassName("Potion", health->objectId());
+	QCOMPARE(cloudHealth->fetch(), true);
+	QCOMPARE(cloudHealth->allKeys().count(), 3);
+	QCOMPARE(cloudHealth->objectForKey("name").toString(), QString("Health"));
+	QCOMPARE(cloudHealth->objectForKey("color").toString(), QString("Red"));
+	QCOMPARE(cloudHealth->objectForKey("size").toInt(), 250);
+
+	// Cleanup
+	QCOMPARE(mana->deleteObject(), true);
+	QCOMPARE(health->deleteObject(), true);
+}
+
+void TestPFObject::test_saveAllWithError()
+{
+	// Make a couple new objects
+	PFObjectPtr mana = PFObject::objectWithClassName("Potion");
+	mana->setObjectForKey(QString("Mana"), "name");
+	mana->setObjectForKey(QString("Blue"), "color");
+	PFObjectPtr health = PFObject::objectWithClassName("Potion");
+	health->setObjectForKey(QString("Health"), "name");
+	health->setObjectForKey(QString("Red"), "color");
+
+	// Put the objects into a list
+	PFObjectList objects;
+	objects << mana << health;
+
+	// Save them both using the save all method
+	PFErrorPtr saveError;
+	QCOMPARE(PFObject::saveAll(objects, saveError), true);
+	QCOMPARE(saveError.isNull(), true);
+
+	// Mix up the properties a bit
+	mana->setObjectForKey(100, "size");
+	health->setObjectForKey(250, "size");
+
+	// Save them both using the save all method
+	QCOMPARE(PFObject::saveAll(objects, saveError), true);
+	QCOMPARE(saveError.isNull(), true);
+
+	// Fetch the mana from the cloud and test the attributes
+	PFObjectPtr cloudMana = PFObject::objectWithClassName("Potion", mana->objectId());
+	QCOMPARE(cloudMana->fetch(), true);
+	QCOMPARE(cloudMana->allKeys().count(), 3);
+	QCOMPARE(cloudMana->objectForKey("name").toString(), QString("Mana"));
+	QCOMPARE(cloudMana->objectForKey("color").toString(), QString("Blue"));
+	QCOMPARE(cloudMana->objectForKey("size").toInt(), 100);
+
+	// Fetch the health from the cloud and test the attributes
+	PFObjectPtr cloudHealth = PFObject::objectWithClassName("Potion", health->objectId());
+	QCOMPARE(cloudHealth->fetch(), true);
+	QCOMPARE(cloudHealth->allKeys().count(), 3);
+	QCOMPARE(cloudHealth->objectForKey("name").toString(), QString("Health"));
+	QCOMPARE(cloudHealth->objectForKey("color").toString(), QString("Red"));
+	QCOMPARE(cloudHealth->objectForKey("size").toInt(), 250);
+
+	// Cleanup
+	QCOMPARE(mana->deleteObject(), true);
+	QCOMPARE(health->deleteObject(), true);
+}
+
+void TestPFObject::test_saveAllInBackground()
+{
+	// Use an event loop to block until we receive the completion
+	QEventLoop eventLoop;
+	QObject::connect(this, SIGNAL(saveEnded()), &eventLoop, SLOT(quit()));
+
+	// Make a couple new objects
+	PFObjectPtr mana = PFObject::objectWithClassName("Potion");
+	mana->setObjectForKey(QString("Mana"), "name");
+	mana->setObjectForKey(QString("Blue"), "color");
+	PFObjectPtr health = PFObject::objectWithClassName("Potion");
+	health->setObjectForKey(QString("Health"), "name");
+	health->setObjectForKey(QString("Red"), "color");
+
+	// Put the objects into a list
+	PFObjectList objects;
+	objects << mana << health;
+
+	// Save the objects
+	QCOMPARE(PFObject::saveAllInBackground(objects, this, SLOT(saveCompleted(bool, PFErrorPtr))), true);
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_saveSucceeded, true);
+	QCOMPARE(_saveError.isNull(), true);
+
+	// Reset flags
+	_saveSucceeded = false;
+	_saveError = PFErrorPtr();
+
+	// Mix up the properties a bit
+	mana->setObjectForKey(100, "size");
+	health->setObjectForKey(250, "size");
+
+	// Save them both using the save all method
+	QCOMPARE(PFObject::saveAllInBackground(objects, this, SLOT(saveCompleted(bool, PFErrorPtr))), true);
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_saveSucceeded, true);
+	QCOMPARE(_saveError.isNull(), true);
+
+	// Fetch the mana from the cloud and test the attributes
+	PFObjectPtr cloudMana = PFObject::objectWithClassName("Potion", mana->objectId());
+	QCOMPARE(cloudMana->fetch(), true);
+	QCOMPARE(cloudMana->allKeys().count(), 3);
+	QCOMPARE(cloudMana->objectForKey("name").toString(), QString("Mana"));
+	QCOMPARE(cloudMana->objectForKey("color").toString(), QString("Blue"));
+	QCOMPARE(cloudMana->objectForKey("size").toInt(), 100);
+
+	// Fetch the health from the cloud and test the attributes
+	PFObjectPtr cloudHealth = PFObject::objectWithClassName("Potion", health->objectId());
+	QCOMPARE(cloudHealth->fetch(), true);
+	QCOMPARE(cloudHealth->allKeys().count(), 3);
+	QCOMPARE(cloudHealth->objectForKey("name").toString(), QString("Health"));
+	QCOMPARE(cloudHealth->objectForKey("color").toString(), QString("Red"));
+	QCOMPARE(cloudHealth->objectForKey("size").toInt(), 250);
+
+	// Cleanup
+	QCOMPARE(mana->deleteObject(), true);
+	QCOMPARE(health->deleteObject(), true);
 }
 
 void TestPFObject::test_deleteObject()

@@ -70,6 +70,11 @@ public:
 	bool save(PFErrorPtr& error);
 	bool saveInBackground(QObject *saveCompleteTarget, const char *saveCompleteAction);
 
+	// Save All Methods - saveCompleteAction signature: (bool succeeded, PFErrorPtr error)
+	static bool saveAll(PFObjectList objects);
+	static bool saveAll(PFObjectList objects, PFErrorPtr& error);
+	static bool saveAllInBackground(PFObjectList objects, QObject *saveCompleteTarget, const char *saveCompleteAction);
+
 	// Delete Methods - deleteObjectCompleteAction signature: (bool succeeded, PFErrorPtr error)
 	bool deleteObject();
 	bool deleteObject(PFErrorPtr& error);
@@ -103,6 +108,7 @@ protected slots:
 
 	// Background Network Reply Completion Slots
 	void handleSaveCompleted(QNetworkReply* networkReply);
+	void handleSaveAllCompleted(QNetworkReply* networkReply);
 	void handleDeleteObjectCompleted(QNetworkReply* networkReply);
 	void handleFetchCompleted(QNetworkReply* networkReply);
 
@@ -110,6 +116,7 @@ signals:
 
 	// Background Request Completion Signals
 	void saveCompleted(bool succeeded, PFErrorPtr error);
+	void saveAllCompleted(bool succeeded, PFErrorPtr error);
 	void deleteObjectCompleted(bool succeeded, PFErrorPtr error);
 	void fetchCompleted(bool succeeded, PFErrorPtr error);
 
@@ -125,11 +132,13 @@ protected:
 
 	// Network Request Builder Methods
 	virtual void createSaveNetworkRequest(QNetworkRequest& request, QByteArray& data);
+	virtual void createSaveAllNetworkRequest(PFObjectList objects, QNetworkRequest& request, QByteArray& data);
 	virtual QNetworkRequest createDeleteObjectNetworkRequest();
 	virtual QNetworkRequest createFetchNetworkRequest();
 
 	// Network Reply Deserialization Methods
 	bool deserializeSaveNetworkReply(QNetworkReply* networkReply, bool updated, PFErrorPtr& error);
+	bool deserializeSaveAllNetworkReply(PFObjectList objects, QNetworkReply* networkReply, PFErrorPtr& error);
 	bool deserializeDeleteObjectNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 	virtual bool deserializeFetchNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 
