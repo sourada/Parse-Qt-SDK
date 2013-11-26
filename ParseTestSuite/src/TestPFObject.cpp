@@ -154,6 +154,11 @@ private slots:
 	void test_deleteObjectWithError();
 	void test_deleteObjectInBackground();
 
+	// Delete All Methods
+	void test_deleteAllObjects();
+	void test_deleteAllObjectsWithError();
+	void test_deleteAllObjectsInBackground();
+
 	// Data Availability Methods
 	void test_isDataAvailable();
 
@@ -2166,6 +2171,129 @@ void TestPFObject::test_deleteObjectInBackground()
 	QCOMPARE(deleteObjectStarted, true);
 	QCOMPARE(_deleteObjectSucceeded, true);
 	QCOMPARE(_deleteObjectError.isNull(), true);
+}
+
+void TestPFObject::test_deleteAllObjects()
+{
+	// Make a couple new objects
+	PFObjectPtr mana = PFObject::objectWithClassName("Potion");
+	mana->setObjectForKey(QString("Mana"), "name");
+	mana->setObjectForKey(QString("Blue"), "color");
+	PFObjectPtr health = PFObject::objectWithClassName("Potion");
+	health->setObjectForKey(QString("Health"), "name");
+	health->setObjectForKey(QString("Red"), "color");
+
+	// Put the objects into a list
+	PFObjectList objects;
+	objects << mana << health;
+
+	// Try to delete them which will fail because they haven't been saved into the cloud yet
+	QCOMPARE(PFObject::deleteAllObjects(objects), false);
+
+	// Save them both using the save all method
+	QCOMPARE(PFObject::saveAll(objects), true);
+	QCOMPARE(mana->objectId().isEmpty(), false);
+	QCOMPARE(health->objectId().isEmpty(), false);
+
+	// Try to delete them again which should succeed
+	QCOMPARE(PFObject::deleteAllObjects(objects), true);
+	QCOMPARE(mana->objectId().isEmpty(), true);
+	QCOMPARE(health->objectId().isEmpty(), true);
+
+	// Try to delete the already deleted objects which should fail
+	QCOMPARE(PFObject::deleteAllObjects(objects), false);
+}
+
+void TestPFObject::test_deleteAllObjectsWithError()
+{
+	// Make a couple new objects
+	PFObjectPtr mana = PFObject::objectWithClassName("Potion");
+	mana->setObjectForKey(QString("Mana"), "name");
+	mana->setObjectForKey(QString("Blue"), "color");
+	PFObjectPtr health = PFObject::objectWithClassName("Potion");
+	health->setObjectForKey(QString("Health"), "name");
+	health->setObjectForKey(QString("Red"), "color");
+
+	// Put the objects into a list
+	PFObjectList objects;
+	objects << mana << health;
+
+	// Try to delete them which will fail because they haven't been saved into the cloud yet
+	PFErrorPtr deleteError;
+	QCOMPARE(PFObject::deleteAllObjects(objects, deleteError), false);
+	QCOMPARE(deleteError.isNull(), false);
+	QCOMPARE(deleteError->errorCode(), kPFErrorInvalidJSON);
+	deleteError = PFErrorPtr();
+
+	// Save them both using the save all method
+	QCOMPARE(PFObject::saveAll(objects), true);
+	QCOMPARE(mana->objectId().isEmpty(), false);
+	QCOMPARE(health->objectId().isEmpty(), false);
+
+	// Try to delete them again which should succeed
+	QCOMPARE(PFObject::deleteAllObjects(objects, deleteError), true);
+	QCOMPARE(deleteError.isNull(), true);
+	QCOMPARE(mana->objectId().isEmpty(), true);
+	QCOMPARE(health->objectId().isEmpty(), true);
+
+	// Try to delete the already deleted objects which should fail
+	QCOMPARE(PFObject::deleteAllObjects(objects, deleteError), false);
+	QCOMPARE(deleteError.isNull(), false);
+	QCOMPARE(deleteError->errorCode(), kPFErrorInvalidJSON);
+}
+
+void TestPFObject::test_deleteAllObjectsInBackground()
+{
+	// Use an event loop to block until we receive the completion
+	QEventLoop eventLoop;
+	QObject::connect(this, SIGNAL(deleteObjectEnded()), &eventLoop, SLOT(quit()));
+
+	// Make a couple new objects
+	PFObjectPtr mana = PFObject::objectWithClassName("Potion");
+	mana->setObjectForKey(QString("Mana"), "name");
+	mana->setObjectForKey(QString("Blue"), "color");
+	PFObjectPtr health = PFObject::objectWithClassName("Potion");
+	health->setObjectForKey(QString("Health"), "name");
+	health->setObjectForKey(QString("Red"), "color");
+
+	// Put the objects into a list
+	PFObjectList objects;
+	objects << mana << health;
+
+	// Try to delete them which will fail because they haven't been saved into the cloud yet
+	QCOMPARE(PFObject::deleteAllObjectsInBackground(objects, this, SLOT(deleteObjectCompleted(bool, PFErrorPtr))), true);
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_deleteObjectSucceeded, false);
+	QCOMPARE(_deleteObjectError.isNull(), false);
+	QCOMPARE(_deleteObjectError->errorCode(), kPFErrorInvalidJSON);
+
+	// Reset delete flags
+	_deleteObjectSucceeded = false;
+	_deleteObjectError = PFErrorPtr();
+
+	// Save them both using the save all method
+	QCOMPARE(PFObject::saveAll(objects), true);
+	QCOMPARE(mana->objectId().isEmpty(), false);
+	QCOMPARE(health->objectId().isEmpty(), false);
+
+	// Try to delete them again which should succeed
+	QCOMPARE(PFObject::deleteAllObjectsInBackground(objects, this, SLOT(deleteObjectCompleted(bool, PFErrorPtr))), true);
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_deleteObjectSucceeded, true);
+	QCOMPARE(_deleteObjectError.isNull(), true);
+	QCOMPARE(mana->objectId().isEmpty(), true);
+	QCOMPARE(health->objectId().isEmpty(), true);
+
+	// Reset delete flags
+	_deleteObjectSucceeded = false;
+	_deleteObjectError = PFErrorPtr();
+
+	// Try to delete the already deleted objects which should fail
+	QCOMPARE(PFObject::deleteAllObjectsInBackground(objects, this, SLOT(deleteObjectCompleted(bool, PFErrorPtr))), true);
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_deleteObjectSucceeded, false);
+	QCOMPARE(_deleteObjectError.isNull(), false);
+	QCOMPARE(_deleteObjectError->errorCode(), kPFErrorInvalidJSON);
 }
 
 void TestPFObject::test_isDataAvailable()

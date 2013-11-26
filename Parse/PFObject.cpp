@@ -53,7 +53,7 @@ bool areEqual(const QVariant& variant1, const QVariant& variant2)
 }	// End of PFObjectHelpers namespace
 
 // Static Globals
-static QHash<PFObject *, PFObjectList> gActiveSaveAllObjects;
+static QHash<PFObject *, PFObjectList> gActiveBackgroundObjects; // Used for save all, delete all and fetch all
 
 #pragma mark - Memory Management Methods
 
@@ -594,6 +594,7 @@ bool PFObject::saveAll(PFObjectList objects, PFErrorPtr& error)
 		object->_isSaving = false;
 
 	// Cleanup
+	networkReply->deleteLater();
 	callbackObject->deleteLater();
 
 	return success;
@@ -617,7 +618,7 @@ bool PFObject::saveAllInBackground(PFObjectList objects, QObject *saveCompleteTa
 
 	// Create a temp PFObject on the heap to connect the callbacks which will be cleaned up then
 	PFObject* callbackObject = new PFObject();
-	gActiveSaveAllObjects.insert(callbackObject, objects);
+	gActiveBackgroundObjects.insert(callbackObject, objects);
 
 	// Prep the request and data
 	QNetworkRequest request;
@@ -701,6 +702,97 @@ bool PFObject::deleteObjectInBackground(QObject *deleteObjectCompleteTarget, con
 	networkAccessManager->deleteResource(networkRequest);
 	QObject::connect(networkAccessManager, SIGNAL(finished(QNetworkReply*)), this, SLOT(handleDeleteObjectCompleted(QNetworkReply*)));
 	QObject::connect(this, SIGNAL(deleteObjectCompleted(bool, PFErrorPtr)), deleteObjectCompleteTarget, deleteObjectCompleteAction);
+
+	return true;
+}
+
+#pragma mark - Delete All Objects Methods
+
+bool PFObject::deleteAllObjects(PFObjectList objects)
+{
+	PFErrorPtr error;
+	return deleteAllObjects(objects, error);
+}
+
+bool PFObject::deleteAllObjects(PFObjectList objects, PFErrorPtr& error)
+{
+	// Make sure we aren't already deleting any of the objects
+	foreach (PFObjectPtr object, objects)
+	{
+		if (object->_isDeleting)
+		{
+			qWarning().nospace() << "WARNING: PFObject is already being deleted: " << object->objectId();
+			return false;
+		}
+	}
+
+	// Update the delete state for all objects
+	foreach (PFObjectPtr object, objects)
+		object->_isDeleting = true;
+
+	// Create a temp object in order to use the create and deserialize methods
+	PFObject* callbackObject = new PFObject();
+
+	// Prep the request and data
+	QNetworkRequest request;
+	QByteArray data;
+	callbackObject->createDeleteAllObjectsNetworkRequest(objects, request, data);
+
+	// Execute the request and connect the callbacks
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	QNetworkReply* networkReply = networkAccessManager->post(request, data);
+
+	// Block the async nature of the request using our own event loop until the reply finishes
+	QEventLoop eventLoop;
+	QObject::connect(networkReply, SIGNAL(finished()), &eventLoop, SLOT(quit()));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+
+	// Deserialize the reply
+	bool success = callbackObject->deserializeDeleteAllObjectsNetworkReply(objects, networkReply, error);
+
+	// Update the delete state for all objects
+	foreach (PFObjectPtr object, objects)
+		object->_isDeleting = false;
+
+	// Cleanup
+	networkReply->deleteLater();
+	callbackObject->deleteLater();
+
+	return success;
+}
+
+bool PFObject::deleteAllObjectsInBackground(PFObjectList objects, QObject *deleteObjectCompleteTarget, const char *deleteObjectCompleteAction)
+{
+	// Make sure we aren't already deleting any of the objects
+	foreach (PFObjectPtr object, objects)
+	{
+		if (object->_isDeleting)
+		{
+			qWarning().nospace() << "WARNING: PFObject is already being deleted: " << object->objectId();
+			return false;
+		}
+	}
+
+	// Update the delete state for all objects
+	foreach (PFObjectPtr object, objects)
+		object->_isDeleting = true;
+
+	// Create a temp PFObject on the heap to connect the callbacks which will be cleaned up then
+	PFObject* callbackObject = new PFObject();
+	gActiveBackgroundObjects.insert(callbackObject, objects);
+
+	// Prep the request and data
+	QNetworkRequest request;
+	QByteArray data;
+	callbackObject->createDeleteAllObjectsNetworkRequest(objects, request, data);
+
+	// Execute the request and connect the callbacks
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	networkAccessManager->post(request, data);
+
+	// Hook up the callbacks to the temp object
+	QObject::connect(networkAccessManager, SIGNAL(finished(QNetworkReply*)), callbackObject, SLOT(handleDeleteAllObjectsCompleted(QNetworkReply*)));
+	QObject::connect(callbackObject, SIGNAL(deleteAllObjectsCompleted(bool, PFErrorPtr)), deleteObjectCompleteTarget, deleteObjectCompleteAction);
 
 	return true;
 }
@@ -889,8 +981,8 @@ void PFObject::handleSaveAllCompleted(QNetworkReply* networkReply)
 	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
 	networkAccessManager->disconnect(this);
 
-	// Fetch the objects out of the active save all objects hash table
-	PFObjectList objects = gActiveSaveAllObjects.value(this);
+	// Fetch the objects out of the active background objects hash table
+	PFObjectList objects = gActiveBackgroundObjects.value(this);
 
 	// Deserialize the reply
 	PFErrorPtr error;
@@ -906,7 +998,7 @@ void PFObject::handleSaveAllCompleted(QNetworkReply* networkReply)
 
 	// Clean up
 	networkReply->deleteLater();
-	gActiveSaveAllObjects.remove(this);
+	gActiveBackgroundObjects.remove(this);
 	this->deleteLater();
 }
 
@@ -931,6 +1023,33 @@ void PFObject::handleDeleteObjectCompleted(QNetworkReply* networkReply)
 
 	// Clean up
 	networkReply->deleteLater();
+}
+
+void PFObject::handleDeleteAllObjectsCompleted(QNetworkReply* networkReply)
+{
+	// Disconnect the network access manager as well as all the connected signals to this instance
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	networkAccessManager->disconnect(this);
+
+	// Fetch the objects out of the active background objects hash table
+	PFObjectList objects = gActiveBackgroundObjects.value(this);
+
+	// Deserialize the reply
+	PFErrorPtr error;
+	bool success = deserializeDeleteAllObjectsNetworkReply(objects, networkReply, error);
+
+	// Update the delete state for all objects
+	foreach (PFObjectPtr object, objects)
+		object->_isDeleting = false;
+
+	// Emit the signal that the delete all objects has completed and then disconnect it
+	emit deleteAllObjectsCompleted(success, error);
+	this->disconnect(SIGNAL(deleteAllObjectsCompleted(bool, PFErrorPtr)));
+
+	// Clean up
+	networkReply->deleteLater();
+	gActiveBackgroundObjects.remove(this);
+	this->deleteLater();
 }
 
 void PFObject::handleFetchCompleted(QNetworkReply* networkReply)
@@ -1070,6 +1189,37 @@ QNetworkRequest PFObject::createDeleteObjectNetworkRequest()
 	return request;
 }
 
+void PFObject::createDeleteAllObjectsNetworkRequest(PFObjectList objects, QNetworkRequest& request, QByteArray& data)
+{
+	// Create a network request
+	request = QNetworkRequest(QString("https://api.parse.com/1/batch"));
+	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
+	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
+	request.setRawHeader(QString("Content-Type").toUtf8(), QString("application/json").toUtf8());
+
+	// Attach the session token if we're authenticated as a particular user
+	if (PFUser::currentUser() && PFUser::currentUser()->isAuthenticated())
+		request.setRawHeader(QString("X-Parse-Session-Token").toUtf8(), PFUser::currentUser()->sessionToken().toUtf8());
+
+	// Iterate through all the objects and create the json for each one
+	QJsonArray jsonRequestArray;
+	foreach (PFObjectPtr object, objects)
+	{
+		// Create the json request
+		QJsonObject jsonRequest;
+		jsonRequest["method"] = QString("DELETE");
+		jsonRequest["path"] = QString("/1/classes/") + object->className() + "/" + object->objectId();
+
+		// Add the json request to the array
+		jsonRequestArray.append(jsonRequest);
+	}
+
+	// Create the final json data
+	QJsonObject finalJsonRequest;
+	finalJsonRequest["requests"] = jsonRequestArray;
+	data = QJsonDocument(finalJsonRequest).toJson(QJsonDocument::Compact);
+}
+
 QNetworkRequest PFObject::createFetchNetworkRequest()
 {
 	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _className + "/" + _objectId);
@@ -1206,6 +1356,59 @@ bool PFObject::deserializeDeleteObjectNetworkReply(QNetworkReply* networkReply, 
 	}
 	else // FAILURE
 	{
+		int errorCode = jsonObject["code"].toInt();
+		QString errorMessage = jsonObject["error"].toString();
+		error = PFError::errorWithCodeAndMessage(errorCode, errorMessage);
+
+		return false;
+	}
+}
+
+bool PFObject::deserializeDeleteAllObjectsNetworkReply(PFObjectList objects, QNetworkReply* networkReply, PFErrorPtr& error)
+{
+	// Parse the json reply
+	QJsonDocument doc = QJsonDocument::fromJson(networkReply->readAll());
+
+	// Extract the JSON payload
+	if (networkReply->error() == QNetworkReply::NoError) // SUCCESS
+	{
+		// Extract the doc as a json array
+		QJsonArray jsonArray = doc.array();
+
+		// Go through each item in the reply and update the respective object
+		bool allSucceeded = true;
+		unsigned int counter = 0;
+		foreach (const QJsonValue& jsonValue, jsonArray)
+		{
+			// Grab the matching object
+			PFObjectPtr object = objects.at(counter);
+
+			// Handle whether the save was a success or error
+			QJsonObject jsonObject = jsonValue.toObject();
+			if (jsonObject.contains("success"))
+			{
+				// Reset the object id
+				object->_objectId = "";
+			}
+			else
+			{
+				// The PFError structure doesn't support more than a single error at a time. Therefore, we're just
+				// going to keep stomping the error with the latest one if we have multiple failures.
+				jsonObject = jsonObject["error"].toObject();
+				int errorCode = jsonObject["code"].toInt();
+				QString errorMessage = jsonObject["error"].toString();
+				error = PFError::errorWithCodeAndMessage(errorCode, errorMessage);
+				allSucceeded = false;
+			}
+
+			++counter;
+		}
+
+		return allSucceeded;
+	}
+	else // FAILURE
+	{
+		QJsonObject jsonObject = doc.object();
 		int errorCode = jsonObject["code"].toInt();
 		QString errorMessage = jsonObject["error"].toString();
 		error = PFError::errorWithCodeAndMessage(errorCode, errorMessage);

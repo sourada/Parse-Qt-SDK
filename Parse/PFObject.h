@@ -80,6 +80,11 @@ public:
 	bool deleteObject(PFErrorPtr& error);
 	bool deleteObjectInBackground(QObject *deleteObjectCompleteTarget, const char *deleteObjectCompleteAction);
 
+	// Delete All Methods - deleteObjectCompleteAction signature: (bool succeeded, PFErrorPtr error)
+	static bool deleteAllObjects(PFObjectList objects);
+	static bool deleteAllObjects(PFObjectList objects, PFErrorPtr& error);
+	static bool deleteAllObjectsInBackground(PFObjectList objects, QObject *deleteObjectCompleteTarget, const char *deleteObjectCompleteAction);
+
 	// Returns true if new or has been fetched, false otherwise
 	bool isDataAvailable();
 
@@ -110,6 +115,7 @@ protected slots:
 	void handleSaveCompleted(QNetworkReply* networkReply);
 	void handleSaveAllCompleted(QNetworkReply* networkReply);
 	void handleDeleteObjectCompleted(QNetworkReply* networkReply);
+	void handleDeleteAllObjectsCompleted(QNetworkReply* networkReply);
 	void handleFetchCompleted(QNetworkReply* networkReply);
 
 signals:
@@ -118,6 +124,7 @@ signals:
 	void saveCompleted(bool succeeded, PFErrorPtr error);
 	void saveAllCompleted(bool succeeded, PFErrorPtr error);
 	void deleteObjectCompleted(bool succeeded, PFErrorPtr error);
+	void deleteAllObjectsCompleted(bool succeeded, PFErrorPtr error);
 	void fetchCompleted(bool succeeded, PFErrorPtr error);
 
 protected:
@@ -134,12 +141,14 @@ protected:
 	virtual void createSaveNetworkRequest(QNetworkRequest& request, QByteArray& data);
 	virtual void createSaveAllNetworkRequest(PFObjectList objects, QNetworkRequest& request, QByteArray& data);
 	virtual QNetworkRequest createDeleteObjectNetworkRequest();
+	virtual void createDeleteAllObjectsNetworkRequest(PFObjectList objects, QNetworkRequest& request, QByteArray& data);
 	virtual QNetworkRequest createFetchNetworkRequest();
 
 	// Network Reply Deserialization Methods
 	bool deserializeSaveNetworkReply(QNetworkReply* networkReply, bool updated, PFErrorPtr& error);
 	bool deserializeSaveAllNetworkReply(PFObjectList objects, QNetworkReply* networkReply, PFErrorPtr& error);
 	bool deserializeDeleteObjectNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
+	bool deserializeDeleteAllObjectsNetworkReply(PFObjectList objects, QNetworkReply* networkReply, PFErrorPtr& error);
 	virtual bool deserializeFetchNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 
 	// Recursive JSON Conversion Helper Methods
