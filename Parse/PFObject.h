@@ -44,6 +44,17 @@ public:
 	void incrementKey(const QString& key);
 	void incrementKeyByAmount(const QString& key, int amount);
 
+	// List Add & Remove Methods
+	void addObjectToListForKey(const QVariant& object, const QString& key);
+	void addObjectToListForKey(PFSerializablePtr object, const QString& key);
+	void addObjectsToListForKey(const QVariantList& objects, const QString& key);
+	void addUniqueObjectToListForKey(const QVariant& object, const QString& key);
+	void addUniqueObjectToListForKey(PFSerializablePtr object, const QString& key);
+	void addUniqueObjectsToListForKey(const QVariantList& objects, const QString& key);
+	void removeObjectFromListForKey(const QVariant& object, const QString& key);
+	void removeObjectFromListForKey(PFSerializablePtr object, const QString& key);
+	void removeObjectsFromListForKey(const QVariantList& objects, const QString& key);
+
 	// ACL Accessor Methods
 	void setACL(PFACLPtr acl);
 	PFACLPtr ACL();

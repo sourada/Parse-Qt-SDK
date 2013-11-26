@@ -118,6 +118,17 @@ private slots:
 	void test_incrementKey();
 	void test_incrementKeyByAmount();
 
+	// List Add & Remove Methods
+	void test_addObjectToListForKey();
+	void test_addObjectToListForKeyWithSerializable();
+	void test_addObjectsToListForKey();
+	void test_addUniqueObjectToListForKey();
+	void test_addUniqueObjectToListForKeyWithSerializable();
+	void test_addUniqueObjectsToListForKey();
+	void test_removeObjectFromListForKey();
+	void test_removeObjectFromListForKeyWithSerializable();
+	void test_removeObjectsFromListForKey();
+
 	// ACL Accessor Methods
 	void test_setACL();
 	void test_ACL();
@@ -870,6 +881,538 @@ void TestPFObject::test_incrementKeyByAmount()
 	QCOMPARE(scoreboard->deleteObject(), true);
 }
 
+void TestPFObject::test_addObjectToListForKey()
+{
+	// Invalid Case 1 - Object does NOT contain key
+	PFObjectPtr chess = PFObject::objectWithClassName("Game");
+	QVariantList pieces;
+	pieces << QString("King");
+	QCOMPARE(chess->allKeys().count(), 0);
+	chess->addObjectToListForKey(pieces.at(0), "piecesRemaining");
+	QCOMPARE(chess->allKeys().count(), 0);
+
+	// Invalid Case 2 - Object For Key is NOT a List
+	chess->setObjectForKey(QString("Chess"), "name");
+	QCOMPARE(chess->allKeys().count(), 1);
+	chess->addObjectToListForKey(QString("King"), "name");
+	QCOMPARE((QMetaType::Type) chess->objectForKey("name").type(), QMetaType::QString);
+	QCOMPARE(chess->allKeys().count(), 1);
+
+	// Valid Case 1 - Object is New
+	chess->setObjectForKey(pieces, "piecesRemaining");
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 1);
+	chess->addObjectToListForKey(QString("Queen"), "piecesRemaining");
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 2);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().at(1).toString(), QString("Queen"));
+
+	// Save the object, fetch it, and re-test
+	QCOMPARE(chess->save(), true);
+	QCOMPARE(chess->fetch(), true);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 2);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().at(1).toString(), QString("Queen"));
+
+	// Valid Case 2 - Object is in Cloud
+	PFObjectPtr cloudChess = PFObject::objectWithClassName(chess->className(), chess->objectId());
+	QCOMPARE(cloudChess->fetch(), true);
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().count(), 2);
+	cloudChess->addObjectToListForKey(QString("Bishop"), "piecesRemaining");
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().count(), 3);
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().at(2).toString(), QString("Bishop"));
+
+	// Save the cloud object
+	QCOMPARE(cloudChess->save(), true);
+
+	// Fetch the original chess object and re-test
+	QCOMPARE(chess->fetch(), true);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 3);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().at(2).toString(), QString("Bishop"));
+
+	// Cleanup
+	QCOMPARE(chess->deleteObject(), true);
+}
+
+void TestPFObject::test_addObjectToListForKeyWithSerializable()
+{
+	// Create two chess pieces
+	PFObjectPtr king = PFObject::objectWithClassName("ChessPiece");
+	king->setObjectForKey(QString("King"), "name");
+	QCOMPARE(king->save(), true);
+	PFObjectPtr queen = PFObject::objectWithClassName("ChessPiece");
+	queen->setObjectForKey(QString("Queen"), "name");
+	QCOMPARE(queen->save(), true);
+
+	// Invalid Case 1 - Object does NOT contain key
+	PFObjectPtr chess = PFObject::objectWithClassName("Game");
+	QCOMPARE(chess->allKeys().count(), 0);
+	chess->addObjectToListForKey(king, "piecesRemaining");
+	QCOMPARE(chess->allKeys().count(), 0);
+
+	// Invalid Case 2 - Object For Key is NOT a List
+	chess->setObjectForKey(QString("Chess"), "name");
+	QCOMPARE(chess->allKeys().count(), 1);
+	chess->addObjectToListForKey(king, "name");
+	QCOMPARE((QMetaType::Type) chess->objectForKey("name").type(), QMetaType::QString);
+	QCOMPARE(chess->allKeys().count(), 1);
+
+	// Valid Case 1 - Object is New
+	chess->setObjectForKey(QVariantList(), "piecesRemaining");
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 0);
+	chess->addObjectToListForKey(king, "piecesRemaining");
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 1);
+	QCOMPARE(PFObject::objectFromVariant(chess->objectForKey("piecesRemaining").toList().at(0)), king);
+
+	// Save the object, fetch it, and re-test
+	QCOMPARE(chess->save(), true);
+	QCOMPARE(chess->fetch(), true);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 1);
+	QCOMPARE(PFObject::objectFromVariant(chess->objectForKey("piecesRemaining").toList().at(0))->objectId(), king->objectId());
+
+	// Valid Case 2 - Object is in Cloud
+	PFObjectPtr cloudChess = PFObject::objectWithClassName(chess->className(), chess->objectId());
+	QCOMPARE(cloudChess->fetch(), true);
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().count(), 1);
+	cloudChess->addObjectToListForKey(queen, "piecesRemaining");
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().count(), 2);
+	QCOMPARE(PFObject::objectFromVariant(cloudChess->objectForKey("piecesRemaining").toList().at(1)), queen);
+
+	// Save the cloud object
+	QCOMPARE(cloudChess->save(), true);
+
+	// Fetch the original chess object and re-test
+	QCOMPARE(chess->fetch(), true);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 2);
+	QCOMPARE(PFObject::objectFromVariant(chess->objectForKey("piecesRemaining").toList().at(1))->objectId(), queen->objectId());
+
+	// Cleanup
+	QCOMPARE(chess->deleteObject(), true);
+	QCOMPARE(king->deleteObject(), true);
+	QCOMPARE(queen->deleteObject(), true);
+}
+
+void TestPFObject::test_addObjectsToListForKey()
+{
+	// Invalid Case 1 - Object does NOT contain key
+	PFObjectPtr chess = PFObject::objectWithClassName("Game");
+	QVariantList pieces;
+	pieces << QString("King") << QString("Queen");
+	QCOMPARE(chess->allKeys().count(), 0);
+	chess->addObjectsToListForKey(pieces, "piecesRemaining");
+	QCOMPARE(chess->allKeys().count(), 0);
+
+	// Invalid Case 2 - Objects List is empty
+	chess->addObjectsToListForKey(QVariantList(), "piecesRemaining");
+	QCOMPARE(chess->allKeys().count(), 0);
+
+	// Invalid Case 3 - Object For Key is NOT a List
+	chess->setObjectForKey(QString("Chess"), "name");
+	QCOMPARE(chess->allKeys().count(), 1);
+	chess->addObjectsToListForKey(QVariantList(), "name");
+	QCOMPARE((QMetaType::Type) chess->objectForKey("name").type(), QMetaType::QString);
+	QCOMPARE(chess->allKeys().count(), 1);
+
+	// Valid Case 1 - Object is New
+	chess->setObjectForKey(pieces, "piecesRemaining");
+	QVariantList morePieces;
+	morePieces << QString("Knight") << QString("Rook");
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 2);
+	chess->addObjectsToListForKey(morePieces, "piecesRemaining");
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 4);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().at(2), morePieces.at(0));
+
+	// Save the object, fetch it, and re-test
+	QCOMPARE(chess->save(), true);
+	QCOMPARE(chess->fetch(), true);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 4);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().at(2), morePieces.at(0));
+
+	// Valid Case 2 - Object is in Cloud
+	PFObjectPtr cloudChess = PFObject::objectWithClassName(chess->className(), chess->objectId());
+	QCOMPARE(cloudChess->fetch(), true);
+	QVariantList evenMorePieces;
+	evenMorePieces << QString("Bishop") << QString("Pawn");
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().count(), 4);
+	cloudChess->addObjectsToListForKey(evenMorePieces, "piecesRemaining");
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().count(), 6);
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().at(4), evenMorePieces.at(0));
+
+	// Save the cloud object
+	QCOMPARE(cloudChess->save(), true);
+
+	// Fetch the original chess object and re-test
+	QCOMPARE(chess->fetch(), true);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 6);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().at(4).toString(), QString("Bishop"));
+
+	// Cleanup
+	QCOMPARE(chess->deleteObject(), true);
+}
+
+void TestPFObject::test_addUniqueObjectToListForKey()
+{
+	// Invalid Case 1 - Object does NOT contain key
+	PFObjectPtr chess = PFObject::objectWithClassName("Game");
+	QVariantList pieces;
+	pieces << QString("King");
+	QCOMPARE(chess->allKeys().count(), 0);
+	chess->addUniqueObjectToListForKey(pieces.at(0), "piecesRemaining");
+	QCOMPARE(chess->allKeys().count(), 0);
+
+	// Invalid Case 2 - Object For Key is NOT a List
+	chess->setObjectForKey(QString("Chess"), "name");
+	QCOMPARE(chess->allKeys().count(), 1);
+	chess->addUniqueObjectToListForKey(QString("King"), "name");
+	QCOMPARE((QMetaType::Type) chess->objectForKey("name").type(), QMetaType::QString);
+	QCOMPARE(chess->allKeys().count(), 1);
+
+	// Valid Case 1 - Object is New
+	chess->setObjectForKey(pieces, "piecesRemaining");
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 1);
+	chess->addUniqueObjectToListForKey(QString("Queen"), "piecesRemaining");
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 2);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().at(1).toString(), QString("Queen"));
+
+	// Add a non-unique object
+	chess->addUniqueObjectToListForKey(QString("King"), "piecesRemaining");
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 2);
+
+	// Save the object, fetch it, and re-test
+	QCOMPARE(chess->save(), true);
+	QCOMPARE(chess->fetch(), true);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 2);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().at(1).toString(), QString("Queen"));
+
+	// Valid Case 2 - Object is in Cloud
+	PFObjectPtr cloudChess = PFObject::objectWithClassName(chess->className(), chess->objectId());
+	QCOMPARE(cloudChess->fetch(), true);
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().count(), 2);
+	cloudChess->addUniqueObjectToListForKey(QString("Queen"), "piecesRemaining");
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().count(), 2);
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().at(1).toString(), QString("Queen"));
+
+	// Save the cloud object
+	QCOMPARE(cloudChess->save(), true);
+
+	// Fetch the original chess object and re-test
+	QCOMPARE(chess->fetch(), true);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 2);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().at(1).toString(), QString("Queen"));
+
+	// Cleanup
+	QCOMPARE(chess->deleteObject(), true);
+}
+
+void TestPFObject::test_addUniqueObjectToListForKeyWithSerializable()
+{
+	// Create four chess pieces
+	PFObjectPtr king = PFObject::objectWithClassName("ChessPiece");
+	king->setObjectForKey(QString("King"), "name");
+	QCOMPARE(king->save(), true);
+	PFObjectPtr queen = PFObject::objectWithClassName("ChessPiece");
+	queen->setObjectForKey(QString("Queen"), "name");
+	QCOMPARE(queen->save(), true);
+	PFObjectPtr knight = PFObject::objectWithClassName("ChessPiece");
+	knight->setObjectForKey(QString("Knight"), "name");
+	QCOMPARE(knight->save(), true);
+	PFObjectPtr bishop = PFObject::objectWithClassName("ChessPiece");
+	bishop->setObjectForKey(QString("Bishop"), "name");
+	QCOMPARE(bishop->save(), true);
+
+	// Invalid Case 1 - Object does NOT contain key
+	PFObjectPtr chess = PFObject::objectWithClassName("Game");
+	QCOMPARE(chess->allKeys().count(), 0);
+	chess->addUniqueObjectToListForKey(king, "piecesRemaining");
+	QCOMPARE(chess->allKeys().count(), 0);
+
+	// Invalid Case 2 - Object For Key is NOT a List
+	chess->setObjectForKey(QString("Chess"), "name");
+	QCOMPARE(chess->allKeys().count(), 1);
+	chess->addUniqueObjectToListForKey(king, "name");
+	QCOMPARE((QMetaType::Type) chess->objectForKey("name").type(), QMetaType::QString);
+	QCOMPARE(chess->allKeys().count(), 1);
+
+	// Valid Case 1 - Object is New
+	QVariantList pieces;
+	pieces << PFObject::toVariant(king) << PFObject::toVariant(queen);
+	chess->setObjectForKey(pieces, "piecesRemaining");
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 2);
+	chess->addUniqueObjectToListForKey(king, "piecesRemaining");
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 2);
+	QCOMPARE(PFObject::objectFromVariant(chess->objectForKey("piecesRemaining").toList().at(0)), king);
+
+	// Add a unique object
+	chess->addUniqueObjectToListForKey(bishop, "piecesRemaining");
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 3);
+	QCOMPARE(PFObject::objectFromVariant(chess->objectForKey("piecesRemaining").toList().at(2)), bishop);
+
+	// Save the object, fetch it, and re-test
+	QCOMPARE(chess->save(), true);
+	QCOMPARE(chess->fetch(), true);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 3);
+	QCOMPARE(PFObject::objectFromVariant(chess->objectForKey("piecesRemaining").toList().at(0))->objectId(), king->objectId());
+	QCOMPARE(PFObject::objectFromVariant(chess->objectForKey("piecesRemaining").toList().at(1))->objectId(), queen->objectId());
+	QCOMPARE(PFObject::objectFromVariant(chess->objectForKey("piecesRemaining").toList().at(2))->objectId(), bishop->objectId());
+
+	// Valid Case 2 - Grab the cloud object and add the knight to it
+	PFObjectPtr cloudChess = PFObject::objectWithClassName(chess->className(), chess->objectId());
+	QCOMPARE(cloudChess->fetch(), true);
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().count(), 3);
+	cloudChess->addUniqueObjectToListForKey(queen, "piecesRemaining"); // Will fail b/c already added
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().count(), 3);
+	cloudChess->addUniqueObjectToListForKey(knight, "piecesRemaining"); // Will succeed
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().count(), 4);
+	QCOMPARE(PFObject::objectFromVariant(cloudChess->objectForKey("piecesRemaining").toList().at(0))->objectId(), king->objectId());
+	QCOMPARE(PFObject::objectFromVariant(cloudChess->objectForKey("piecesRemaining").toList().at(1))->objectId(), queen->objectId());
+	QCOMPARE(PFObject::objectFromVariant(cloudChess->objectForKey("piecesRemaining").toList().at(2))->objectId(), bishop->objectId());
+	QCOMPARE(PFObject::objectFromVariant(cloudChess->objectForKey("piecesRemaining").toList().at(3))->objectId(), knight->objectId());
+
+	// Save the cloud object
+	QCOMPARE(cloudChess->save(), true);
+
+	// Fetch the original chess object and re-test
+	QCOMPARE(chess->fetch(), true);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 4);
+	QCOMPARE(PFObject::objectFromVariant(chess->objectForKey("piecesRemaining").toList().at(0))->objectId(), king->objectId());
+	QCOMPARE(PFObject::objectFromVariant(chess->objectForKey("piecesRemaining").toList().at(1))->objectId(), queen->objectId());
+	QCOMPARE(PFObject::objectFromVariant(chess->objectForKey("piecesRemaining").toList().at(2))->objectId(), bishop->objectId());
+	QCOMPARE(PFObject::objectFromVariant(chess->objectForKey("piecesRemaining").toList().at(3))->objectId(), knight->objectId());
+
+	// Cleanup
+	QCOMPARE(chess->deleteObject(), true);
+	QCOMPARE(king->deleteObject(), true);
+	QCOMPARE(queen->deleteObject(), true);
+	QCOMPARE(knight->deleteObject(), true);
+	QCOMPARE(bishop->deleteObject(), true);
+}
+
+void TestPFObject::test_addUniqueObjectsToListForKey()
+{
+	// Invalid Case 1 - Object does NOT contain key
+	PFObjectPtr chess = PFObject::objectWithClassName("Game");
+	QVariantList pieces;
+	pieces << QString("King") << QString("Queen");
+	QCOMPARE(chess->allKeys().count(), 0);
+	chess->addUniqueObjectsToListForKey(pieces, "piecesRemaining");
+	QCOMPARE(chess->allKeys().count(), 0);
+
+	// Invalid Case 2 - Objects List is empty
+	chess->addUniqueObjectsToListForKey(QVariantList(), "piecesRemaining");
+	QCOMPARE(chess->allKeys().count(), 0);
+
+	// Invalid Case 3 - Object For Key is NOT a List
+	chess->setObjectForKey(QString("Chess"), "name");
+	QCOMPARE(chess->allKeys().count(), 1);
+	chess->addUniqueObjectsToListForKey(QVariantList(), "name");
+	QCOMPARE((QMetaType::Type) chess->objectForKey("name").type(), QMetaType::QString);
+	QCOMPARE(chess->allKeys().count(), 1);
+
+	// Valid Case 1 - Object is New
+	chess->setObjectForKey(pieces, "piecesRemaining");
+	QVariantList morePieces;
+	morePieces << QString("Knight") << QString("Rook") << QString("King") << QString("Queen");
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 2);
+	chess->addUniqueObjectsToListForKey(morePieces, "piecesRemaining");
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 4);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().at(2), morePieces.at(0));
+
+	// Save the object, fetch it, and re-test
+	QCOMPARE(chess->save(), true);
+	QCOMPARE(chess->fetch(), true);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 4);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().at(2), morePieces.at(0));
+
+	// Valid Case 2 - Object is in Cloud
+	PFObjectPtr cloudChess = PFObject::objectWithClassName(chess->className(), chess->objectId());
+	QCOMPARE(cloudChess->fetch(), true);
+	QVariantList evenMorePieces;
+	evenMorePieces << QString("Bishop") << QString("Pawn") << QString("Rook") << QString("King");
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().count(), 4);
+	cloudChess->addUniqueObjectsToListForKey(evenMorePieces, "piecesRemaining");
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().count(), 6);
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().at(4), evenMorePieces.at(0));
+
+	// Save the cloud object
+	QCOMPARE(cloudChess->save(), true);
+
+	// Fetch the original chess object and re-test
+	QCOMPARE(chess->fetch(), true);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 6);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().at(4).toString(), QString("Bishop"));
+
+	// Cleanup
+	QCOMPARE(chess->deleteObject(), true);
+}
+
+void TestPFObject::test_removeObjectFromListForKey()
+{
+	// Invalid Case 1 - Object does NOT contain key
+	PFObjectPtr chess = PFObject::objectWithClassName("Game");
+	QCOMPARE(chess->allKeys().count(), 0);
+	chess->removeObjectFromListForKey(QVariant(), "piecesRemaining");
+	QCOMPARE(chess->allKeys().count(), 0);
+
+	// Add some pieces to the array
+	QVariantList pieces;
+	pieces << QString("King") << QString("Queen") << QString("Knight");
+	chess->setObjectForKey(pieces, "piecesRemaining");
+	QCOMPARE(chess->allKeys().count(), 1);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 3);
+
+	// Try to remove a piece that isn't in the array
+	chess->removeObjectFromListForKey(QString("Rook"), "piecesRemaining");
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 3);
+
+	// Remove an object that is stored inside the array
+	chess->removeObjectFromListForKey(QString("Queen"), "piecesRemaining");
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 2);
+
+	// Save the object, fetch it, and re-test
+	QCOMPARE(chess->save(), true);
+	QCOMPARE(chess->fetch(), true);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 2);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().at(1).toString(), QString("Knight"));
+
+	// Pull the object from the cloud and remove a piece
+	PFObjectPtr cloudChess = PFObject::objectWithClassName(chess->className(), chess->objectId());
+	QCOMPARE(cloudChess->fetch(), true);
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().count(), 2);
+	cloudChess->removeObjectFromListForKey(QString("King"), "piecesRemaining");
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().count(), 1);
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().at(0).toString(), QString("Knight"));
+
+	// Save the cloud object
+	QCOMPARE(cloudChess->save(), true);
+
+	// Fetch the original chess object and re-test
+	QCOMPARE(chess->fetch(), true);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 1);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().at(0).toString(), QString("Knight"));
+
+	// Cleanup
+	QCOMPARE(chess->deleteObject(), true);
+}
+
+void TestPFObject::test_removeObjectFromListForKeyWithSerializable()
+{
+	// Create four chess pieces
+	PFObjectPtr king = PFObject::objectWithClassName("ChessPiece");
+	king->setObjectForKey(QString("King"), "name");
+	QCOMPARE(king->save(), true);
+	PFObjectPtr queen = PFObject::objectWithClassName("ChessPiece");
+	queen->setObjectForKey(QString("Queen"), "name");
+	QCOMPARE(queen->save(), true);
+	PFObjectPtr knight = PFObject::objectWithClassName("ChessPiece");
+	knight->setObjectForKey(QString("Knight"), "name");
+	QCOMPARE(knight->save(), true);
+	PFObjectPtr bishop = PFObject::objectWithClassName("ChessPiece");
+	bishop->setObjectForKey(QString("Bishop"), "name");
+	QCOMPARE(bishop->save(), true);
+
+	// Invalid Case 1 - Object does NOT contain key
+	PFObjectPtr chess = PFObject::objectWithClassName("Game");
+	QCOMPARE(chess->allKeys().count(), 0);
+	chess->removeObjectFromListForKey(king, "piecesRemaining");
+	QCOMPARE(chess->allKeys().count(), 0);
+
+	// Add some pieces to the array
+	QVariantList pieces;
+	pieces << PFObject::toVariant(king) << PFObject::toVariant(queen) << PFObject::toVariant(knight);
+	chess->setObjectForKey(pieces, "piecesRemaining");
+	QCOMPARE(chess->allKeys().count(), 1);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 3);
+
+	// Try to remove a piece that isn't in the array
+	chess->removeObjectFromListForKey(bishop, "piecesRemaining");
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 3);
+
+	// Remove an object that is stored inside the array
+	chess->removeObjectFromListForKey(queen, "piecesRemaining");
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 2);
+
+	// Save the object, fetch it, and re-test
+	QCOMPARE(chess->save(), true);
+	QCOMPARE(chess->fetch(), true);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 2);
+	QCOMPARE(PFObject::objectFromVariant(chess->objectForKey("piecesRemaining").toList().at(1))->objectId(), knight->objectId());
+
+	// Pull the object from the cloud and remove a piece
+	PFObjectPtr cloudChess = PFObject::objectWithClassName(chess->className(), chess->objectId());
+	QCOMPARE(cloudChess->fetch(), true);
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().count(), 2);
+	cloudChess->removeObjectFromListForKey(king, "piecesRemaining");
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().count(), 1);
+	QCOMPARE(PFObject::objectFromVariant(cloudChess->objectForKey("piecesRemaining").toList().at(0))->objectId(), knight->objectId());
+
+	// Save the cloud object
+	QCOMPARE(cloudChess->save(), true);
+
+	// Fetch the original chess object and re-test
+	QCOMPARE(chess->fetch(), true);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 1);
+	QCOMPARE(PFObject::objectFromVariant(chess->objectForKey("piecesRemaining").toList().at(0))->objectId(), knight->objectId());
+
+	// Cleanup
+	QCOMPARE(chess->deleteObject(), true);
+	QCOMPARE(king->deleteObject(), true);
+	QCOMPARE(queen->deleteObject(), true);
+	QCOMPARE(knight->deleteObject(), true);
+	QCOMPARE(bishop->deleteObject(), true);
+}
+
+void TestPFObject::test_removeObjectsFromListForKey()
+{
+	// Invalid Case 1 - Object does NOT contain key
+	PFObjectPtr chess = PFObject::objectWithClassName("Game");
+	QCOMPARE(chess->allKeys().count(), 0);
+	chess->removeObjectsFromListForKey(QVariantList(), "piecesRemaining");
+	QCOMPARE(chess->allKeys().count(), 0);
+
+	// Add some pieces to the array
+	QVariantList pieces;
+	pieces << QString("King") << QString("Queen") << QString("Knight");
+	chess->setObjectForKey(pieces, "piecesRemaining");
+	QCOMPARE(chess->allKeys().count(), 1);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 3);
+
+	// Try to remove pieces that aren't in the array
+	QVariantList removalPieces;
+	removalPieces << QString("Rook") << QString("Pawn");
+	chess->removeObjectsFromListForKey(removalPieces, "piecesRemaining");
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 3);
+
+	// Remove an object that is stored inside the array
+	removalPieces.clear();
+	removalPieces << QString("Queen");
+	chess->removeObjectsFromListForKey(removalPieces, "piecesRemaining");
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 2);
+
+	// Save the object, fetch it, and re-test
+	QCOMPARE(chess->save(), true);
+	QCOMPARE(chess->fetch(), true);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 2);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().at(1).toString(), QString("Knight"));
+
+	// Pull the object from the cloud and remove a piece
+	PFObjectPtr cloudChess = PFObject::objectWithClassName(chess->className(), chess->objectId());
+	QCOMPARE(cloudChess->fetch(), true);
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().count(), 2);
+	removalPieces.clear();
+	removalPieces << QString("King");
+	cloudChess->removeObjectsFromListForKey(removalPieces, "piecesRemaining");
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().count(), 1);
+	QCOMPARE(cloudChess->objectForKey("piecesRemaining").toList().at(0).toString(), QString("Knight"));
+
+	// Save the cloud object
+	QCOMPARE(cloudChess->save(), true);
+
+	// Fetch the original chess object and re-test
+	QCOMPARE(chess->fetch(), true);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().count(), 1);
+	QCOMPARE(chess->objectForKey("piecesRemaining").toList().at(0).toString(), QString("Knight"));
+
+	// Cleanup
+	QCOMPARE(chess->deleteObject(), true);
+}
+
 void TestPFObject::test_setACL()
 {
 	// Create a level and verify the ACL is empty by default
@@ -1503,8 +2046,7 @@ void TestPFObject::test_fetch()
 
 	// Fetch the hero
 	PFObjectPtr hero = PFObject::objectWithClassName("Character", _hero->objectId());
-	bool heroFetched = hero->fetch();
-	QCOMPARE(heroFetched, true);
+	QCOMPARE(hero->fetch(), true);
 
 	// Test hero primitive objects
 	QCOMPARE(hero->objectForKey("name").toString(), QString("Hercules"));

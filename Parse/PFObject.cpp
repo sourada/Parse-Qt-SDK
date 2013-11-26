@@ -24,6 +24,34 @@
 
 namespace parse {
 
+#pragma mark - Private Helper Conversion Methods
+
+namespace PFObjectHelpers {
+
+bool areEqual(const QVariant& variant1, const QVariant& variant2)
+{
+	// Compare the JSON values if we have serializables
+	PFSerializablePtr serializable1 = variant1.value<PFSerializablePtr>();
+	PFSerializablePtr serializable2 = variant2.value<PFSerializablePtr>();
+	if (!serializable1.isNull() && !serializable2.isNull())
+	{
+		// Make sure that they're the same class before converting to JSON
+		if (serializable1->pfClassName() == serializable2->pfClassName())
+		{
+			QJsonObject jsonVariant1, jsonVariant2;
+			serializable1->toJson(jsonVariant1);
+			serializable2->toJson(jsonVariant2);
+			QByteArray json1 = QJsonDocument(jsonVariant1).toJson();
+			QByteArray json2 = QJsonDocument(jsonVariant2).toJson();
+			return (json1 == json2);
+		}
+	}
+
+	return false;
+}
+
+}	// End of helpers namespace
+
 #pragma mark - Memory Management Methods
 
 PFObject::PFObject()
@@ -213,6 +241,181 @@ void PFObject::incrementKeyByAmount(const QString& key, int amount)
 		{
 			qWarning().nospace() << "PFObject::incrementKeyByAmount failed because the property for key: " << key << " is NOT a number";
 		}
+	}
+}
+
+#pragma mark - List Add & Remove Methods
+
+void PFObject::addObjectToListForKey(const QVariant& object, const QString& key)
+{
+	QVariantList objects;
+	objects.append(object);
+	addObjectsToListForKey(objects, key);
+}
+
+void PFObject::addObjectToListForKey(PFSerializablePtr object, const QString& key)
+{
+	addObjectToListForKey(PFSerializable::toVariant(object), key);
+}
+
+void PFObject::addObjectsToListForKey(const QVariantList& objects, const QString& key)
+{
+	if (_properties.contains(key) && !objects.isEmpty())
+	{
+		QMetaType::Type propertyType = (QMetaType::Type) _properties.value(key).type();
+		if (propertyType == QMetaType::QVariantList)
+		{
+			// Add the objects to the property list
+			QVariantList propertyList = _properties.value(key).toList();
+			propertyList.append(objects);
+			_properties[key] = propertyList;
+
+			// Create an Add operation to append the objects
+			if (!_objectId.isEmpty())
+			{
+				QVariantMap operation;
+				operation["__op"] = QString("Add");
+				operation["objects"] = objects;
+				_updatedProperties[key] = operation;
+			}
+		}
+		else
+		{
+			qWarning().nospace() << "PFObject::addObjectsToListForKey failed because the object for the given key: " << key << " is NOT a list";
+		}
+	}
+}
+
+void PFObject::addUniqueObjectToListForKey(const QVariant& object, const QString& key)
+{
+	QVariantList uniqueObjects;
+	uniqueObjects.append(object);
+	addUniqueObjectsToListForKey(uniqueObjects, key);
+}
+
+void PFObject::addUniqueObjectToListForKey(PFSerializablePtr object, const QString& key)
+{
+	addUniqueObjectToListForKey(PFSerializable::toVariant(object), key);
+}
+
+void PFObject::addUniqueObjectsToListForKey(const QVariantList& objects, const QString& key)
+{
+	if (_properties.contains(key) && !objects.isEmpty())
+	{
+		QMetaType::Type propertyType = (QMetaType::Type) _properties.value(key).type();
+		if (propertyType == QMetaType::QVariantList)
+		{
+			// Create a property set and find which objects are unique
+			QVariantList propertyList = _properties.value(key).toList();
+
+			// Go through all the objects to add and find the unique ones
+			QVariantList uniqueObjects = objects;
+			foreach (const QVariant& objectToAdd, objects)
+			{
+				foreach (const QVariant& existingObject, propertyList)
+				{
+					if (existingObject == objectToAdd)
+					{
+						uniqueObjects.removeOne(existingObject);
+						break;
+					}
+					else if (PFObjectHelpers::areEqual(existingObject, objectToAdd))
+					{
+						uniqueObjects.removeOne(objectToAdd);
+						break;
+					}
+				}
+			}
+
+			// Only continue if there were unique objects found
+			if (!uniqueObjects.isEmpty())
+			{
+				// Add all the unique objects to the existing property list
+				propertyList.append(uniqueObjects);
+				_properties[key] = propertyList;
+
+				// Create an Add operation to append the object
+				if (!_objectId.isEmpty())
+				{
+					QVariantMap operation;
+					operation["__op"] = QString("AddUnique");
+					operation["objects"] = uniqueObjects;
+					_updatedProperties[key] = operation;
+				}
+			}
+			else
+			{
+				qWarning() << "PFObject::addUniqueObjectsToListForKey did not find any unique objects to add to the list";
+			}
+		}
+		else
+		{
+			qWarning().nospace() << "PFObject::addUniqueObjectsToListForKey failed because the object for the given key: " << key << " is NOT a list";
+		}
+	}
+}
+
+void PFObject::removeObjectFromListForKey(const QVariant& object, const QString& key)
+{
+	QVariantList objects;
+	objects.append(object);
+	removeObjectsFromListForKey(objects, key);
+}
+
+void PFObject::removeObjectFromListForKey(PFSerializablePtr object, const QString& key)
+{
+	removeObjectFromListForKey(PFSerializable::toVariant(object), key);
+}
+
+void PFObject::removeObjectsFromListForKey(const QVariantList& objects, const QString& key)
+{
+	if (_properties.contains(key) && !objects.isEmpty())
+	{
+		// Create a property set and find which objects are unique
+		QVariantList currentObjects = _properties.value(key).toList();
+		QVariantList matchedObjects;
+		foreach (const QVariant& objectToRemove, objects)
+		{
+			foreach (const QVariant& currentObject, currentObjects)
+			{
+				if (currentObject == objectToRemove)
+				{
+					matchedObjects.append(currentObject);
+					break;
+				}
+				else if (PFObjectHelpers::areEqual(currentObject, objectToRemove))
+				{
+					matchedObjects.append(currentObject);
+					break;
+				}
+			}
+		}
+
+		// Create a remove operation if there are matched objects
+		if (!matchedObjects.isEmpty())
+		{
+			// First remove all the matched objects and update the properties key with the modified list
+			foreach (const QVariant& matchedObject, matchedObjects)
+				currentObjects.removeAll(matchedObject);
+			_properties[key] = currentObjects;
+
+			// Create a Remove operation to remove the objects in the cloud
+			if (!_objectId.isEmpty())
+			{
+				QVariantMap operation;
+				operation["__op"] = QString("Remove");
+				operation["objects"] = matchedObjects;
+				_updatedProperties[key] = operation;
+			}
+		}
+		else
+		{
+			qWarning() << "PFObject::removeObjectsFromListForKey did not find any objects to remove from the list";
+		}
+	}
+	else
+	{
+		qWarning().nospace() << "PFObject::removeObjectsFromListForKey failed because the object for the given key: " << key << " is NOT a list";
 	}
 }
 
