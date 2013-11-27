@@ -93,12 +93,20 @@ public:
 	bool fetch(PFErrorPtr& error);
 	bool fetchInBackground(QObject *fetchCompleteTarget, const char *fetchCompleteAction);
 
+	// Fetch All Methods
+	static bool fetchAll(PFObjectList objects);
+	static bool fetchAll(PFObjectList objects, PFErrorPtr& error);
+
 	// Fetch If Needed Methods - fetchCompleteAction signature: (bool succeeded, PFErrorPtr error)
 	// Returns true if a fetch was actually started, false otherwise. Also, these methods only
 	// execute a fetch from the server if isDataAvailable() is false.
 	bool fetchIfNeeded();
 	bool fetchIfNeeded(PFErrorPtr& error);
 	bool fetchIfNeededInBackground(QObject *fetchCompleteTarget, const char *fetchCompleteAction);
+
+	// Fetch All Methods
+	static bool fetchAllIfNeeded(PFObjectList objects);
+	static bool fetchAllIfNeeded(PFObjectList objects, PFErrorPtr& error);
 
 	//=================================================================================
 	//                                BACKEND API

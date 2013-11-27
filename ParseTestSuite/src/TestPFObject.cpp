@@ -167,10 +167,18 @@ private slots:
 	void test_fetchWithError();
 	void test_fetchInBackground();
 
+	// Fetch All Methods
+	void test_fetchAll();
+	void test_fetchAllWithError();
+
 	// Fetch If Needed Methods
 	void test_fetchIfNeeded();
 	void test_fetchIfNeededWithError();
 	void test_fetchIfNeededInBackground();
+
+	// Fetch All If Needed Methods
+	void test_fetchAllIfNeeded();
+	void test_fetchAllIfNeededWithError();
 
 	// PFSerializable Methods
 	void test_fromJson();
@@ -2658,6 +2666,65 @@ void TestPFObject::test_fetchInBackground()
 	QCOMPARE(helmet->objectForKey("defense").toInt(), 121);
 }
 
+void TestPFObject::test_fetchAll()
+{
+	// Invalid Case - try to fetch when the object doesn't have an object id
+	PFObjectPtr invalidObject = PFObject::objectWithClassName("ManImSoGoingToFail");
+	PFObjectList invalidObjects;
+	invalidObjects << invalidObject;
+	QCOMPARE(PFObject::fetchAll(invalidObjects), false);
+
+	// Create some cloud fetch objects from pre-existing ones
+	PFObjectPtr axe = PFObject::objectWithClassName(_axe->className(), _axe->objectId());
+	PFObjectPtr sword = PFObject::objectWithClassName(_sword->className(), _sword->objectId());
+
+	// Create a list of objects
+	PFObjectList objects;
+	objects << axe << sword;
+
+	// Fetch the objects
+	QCOMPARE(PFObject::fetchAll(objects), true);
+	QCOMPARE(axe->objectForKey("weaponClass").toString(), QString("Axe"));
+	QCOMPARE(axe->objectForKey("attackMin").toInt(), 19);
+	QCOMPARE(axe->objectForKey("attackMax").toInt(), 26);
+	QCOMPARE(axe->objectForKey("strengthRequired").toInt(), 65);
+	QCOMPARE(sword->objectForKey("weaponClass").toString(), QString("Sword"));
+	QCOMPARE(sword->objectForKey("attackMin").toInt(), 13);
+	QCOMPARE(sword->objectForKey("attackMax").toInt(), 15);
+	QCOMPARE(sword->objectForKey("strengthRequired").toInt(), 29);
+}
+
+void TestPFObject::test_fetchAllWithError()
+{
+	// Invalid Case - try to fetch when the object doesn't have an object id
+	PFObjectPtr invalidObject = PFObject::objectWithClassName("ManImSoGoingToFail");
+	PFObjectList invalidObjects;
+	invalidObjects << invalidObject;
+	PFErrorPtr fetchError;
+	QCOMPARE(PFObject::fetchAll(invalidObjects, fetchError), false);
+	QCOMPARE(fetchError.isNull(), true);
+
+	// Create some cloud fetch objects from pre-existing ones
+	PFObjectPtr axe = PFObject::objectWithClassName(_axe->className(), _axe->objectId());
+	PFObjectPtr sword = PFObject::objectWithClassName(_sword->className(), _sword->objectId());
+
+	// Create a list of objects
+	PFObjectList objects;
+	objects << axe << sword;
+
+	// Fetch the objects
+	QCOMPARE(PFObject::fetchAll(objects, fetchError), true);
+	QCOMPARE(fetchError.isNull(), true);
+	QCOMPARE(axe->objectForKey("weaponClass").toString(), QString("Axe"));
+	QCOMPARE(axe->objectForKey("attackMin").toInt(), 19);
+	QCOMPARE(axe->objectForKey("attackMax").toInt(), 26);
+	QCOMPARE(axe->objectForKey("strengthRequired").toInt(), 65);
+	QCOMPARE(sword->objectForKey("weaponClass").toString(), QString("Sword"));
+	QCOMPARE(sword->objectForKey("attackMin").toInt(), 13);
+	QCOMPARE(sword->objectForKey("attackMax").toInt(), 15);
+	QCOMPARE(sword->objectForKey("strengthRequired").toInt(), 29);
+}
+
 void TestPFObject::test_fetchIfNeeded()
 {
 	// Case 1 - new object won't fetch
@@ -2746,6 +2813,80 @@ void TestPFObject::test_fetchIfNeededInBackground()
 	QCOMPARE(_fetchSucceeded, false);
 	QCOMPARE(_fetchError.isNull(), false);
 	QCOMPARE(_fetchError->errorCode(), kPFErrorObjectNotFound);
+}
+
+void TestPFObject::test_fetchAllIfNeeded()
+{
+	// Invalid Case 1 - try to fetch when the object doesn't have an object id
+	PFObjectPtr invalidObject = PFObject::objectWithClassName("ManImSoGoingToFail");
+	PFObjectList invalidObjects;
+	invalidObjects << invalidObject;
+	QCOMPARE(PFObject::fetchAllIfNeeded(invalidObjects), false);
+
+	// Invalid Case 2 - try to fetch an already fetched object
+	PFObjectPtr greaves = PFObject::objectWithClassName(_greaves->className(), _greaves->objectId());
+	QCOMPARE(greaves->fetch(), true);
+	PFObjectList greavesList;
+	greavesList << greaves;
+	QCOMPARE(PFObject::fetchAllIfNeeded(greavesList), false);
+
+	// Create some cloud fetch objects from pre-existing ones
+	PFObjectPtr axe = PFObject::objectWithClassName(_axe->className(), _axe->objectId());
+	PFObjectPtr sword = PFObject::objectWithClassName(_sword->className(), _sword->objectId());
+
+	// Create a list of objects
+	PFObjectList objects;
+	objects << axe << sword;
+
+	// Fetch the objects
+	QCOMPARE(PFObject::fetchAllIfNeeded(objects), true);
+	QCOMPARE(axe->objectForKey("weaponClass").toString(), QString("Axe"));
+	QCOMPARE(axe->objectForKey("attackMin").toInt(), 19);
+	QCOMPARE(axe->objectForKey("attackMax").toInt(), 26);
+	QCOMPARE(axe->objectForKey("strengthRequired").toInt(), 65);
+	QCOMPARE(sword->objectForKey("weaponClass").toString(), QString("Sword"));
+	QCOMPARE(sword->objectForKey("attackMin").toInt(), 13);
+	QCOMPARE(sword->objectForKey("attackMax").toInt(), 15);
+	QCOMPARE(sword->objectForKey("strengthRequired").toInt(), 29);
+}
+
+void TestPFObject::test_fetchAllIfNeededWithError()
+{
+	// Invalid Case 1 - try to fetch when the object doesn't have an object id
+	PFObjectPtr invalidObject = PFObject::objectWithClassName("ManImSoGoingToFail");
+	PFObjectList invalidObjects;
+	invalidObjects << invalidObject;
+	PFErrorPtr fetchError;
+	QCOMPARE(PFObject::fetchAllIfNeeded(invalidObjects, fetchError), false);
+	QCOMPARE(fetchError.isNull(), true);
+
+	// Invalid Case 2 - try to fetch an already fetched object
+	PFObjectPtr greaves = PFObject::objectWithClassName(_greaves->className(), _greaves->objectId());
+	QCOMPARE(greaves->fetch(), true);
+	PFObjectList greavesList;
+	greavesList << greaves;
+	QCOMPARE(PFObject::fetchAllIfNeeded(greavesList, fetchError), false);
+	QCOMPARE(fetchError.isNull(), true);
+
+	// Create some cloud fetch objects from pre-existing ones
+	PFObjectPtr axe = PFObject::objectWithClassName(_axe->className(), _axe->objectId());
+	PFObjectPtr sword = PFObject::objectWithClassName(_sword->className(), _sword->objectId());
+
+	// Create a list of objects
+	PFObjectList objects;
+	objects << axe << sword;
+
+	// Fetch the objects
+	QCOMPARE(PFObject::fetchAllIfNeeded(objects, fetchError), true);
+	QCOMPARE(fetchError.isNull(), true);
+	QCOMPARE(axe->objectForKey("weaponClass").toString(), QString("Axe"));
+	QCOMPARE(axe->objectForKey("attackMin").toInt(), 19);
+	QCOMPARE(axe->objectForKey("attackMax").toInt(), 26);
+	QCOMPARE(axe->objectForKey("strengthRequired").toInt(), 65);
+	QCOMPARE(sword->objectForKey("weaponClass").toString(), QString("Sword"));
+	QCOMPARE(sword->objectForKey("attackMin").toInt(), 13);
+	QCOMPARE(sword->objectForKey("attackMax").toInt(), 15);
+	QCOMPARE(sword->objectForKey("strengthRequired").toInt(), 29);
 }
 
 void TestPFObject::test_fromJson()

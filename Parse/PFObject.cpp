@@ -891,6 +891,31 @@ bool PFObject::fetchInBackground(QObject *fetchCompleteTarget, const char *fetch
 	return true;
 }
 
+#pragma mark - Fetch All Methods
+
+bool PFObject::fetchAll(PFObjectList objects)
+{
+	PFErrorPtr error;
+	return fetchAll(objects, error);
+}
+
+bool PFObject::fetchAll(PFObjectList objects, PFErrorPtr& error)
+{
+	bool allSucceeded = true;
+	foreach (PFObjectPtr object, objects)
+	{
+		PFErrorPtr fetchError;
+		bool success = object->fetch(fetchError);
+		if (!success)
+		{
+			allSucceeded = false;
+			error = fetchError;
+		}
+	}
+
+	return allSucceeded;
+}
+
 #pragma mark - Fetch If Needed Methods
 
 bool PFObject::fetchIfNeeded()
@@ -913,6 +938,31 @@ bool PFObject::fetchIfNeededInBackground(QObject *fetchCompleteTarget, const cha
 		return false;
 	else
 		return fetchInBackground(fetchCompleteTarget, fetchCompleteAction);
+}
+
+#pragma mark - Fetch All If Needed Methods
+
+bool PFObject::fetchAllIfNeeded(PFObjectList objects)
+{
+	PFErrorPtr error;
+	return fetchAllIfNeeded(objects, error);
+}
+
+bool PFObject::fetchAllIfNeeded(PFObjectList objects, PFErrorPtr& error)
+{
+	bool allSucceeded = true;
+	foreach (PFObjectPtr object, objects)
+	{
+		PFErrorPtr fetchError;
+		bool success = object->fetchIfNeeded(fetchError);
+		if (!success)
+		{
+			allSucceeded = false;
+			error = fetchError;
+		}
+	}
+
+	return allSucceeded;
 }
 
 #pragma mark - PFSerializable Methods
