@@ -969,9 +969,20 @@ bool PFObject::fetchAllIfNeeded(PFObjectList objects, PFErrorPtr& error)
 
 QVariant PFObject::fromJson(const QJsonObject& jsonObject)
 {
+	// Create a new PFObject using the className and objectId
 	QString className = jsonObject["className"].toString();
 	QString objectId = jsonObject["objectId"].toString();
 	PFObjectPtr object = objectWithClassName(className, objectId);
+
+	// Remove some properties from the json object to allow us to recursively convert everything else to our properties
+	QJsonObject duplicateJsonObject = jsonObject;
+	duplicateJsonObject.remove("__type");
+	duplicateJsonObject.remove("className");
+	duplicateJsonObject.remove("objectId");
+
+	// Convert the entire json object into a properties variant map and strip out the instance members
+	object->_properties = object->convertJsonToVariant(duplicateJsonObject).toMap();
+	object->stripInstanceMembersFromProperties();
 
 	return toVariant(object);
 }
@@ -1609,6 +1620,10 @@ QVariant PFObject::convertJsonToVariant(const QJsonValue& jsonValue)
 
 void PFObject::stripInstanceMembersFromProperties()
 {
+	// className
+	if (_properties.contains("className"))
+		_className = _properties.take("className").toString();
+
 	// objectId
 	if (_properties.contains("objectId"))
 		_objectId = _properties.take("objectId").toString();
