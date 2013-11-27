@@ -138,11 +138,11 @@ protected:
 	bool needsUpdate();
 
 	// Network Request Builder Methods
-	virtual void createSaveNetworkRequest(QNetworkRequest& request, QByteArray& data);
-	virtual void createSaveAllNetworkRequest(PFObjectList objects, QNetworkRequest& request, QByteArray& data);
-	virtual QNetworkRequest createDeleteObjectNetworkRequest();
-	virtual void createDeleteAllObjectsNetworkRequest(PFObjectList objects, QNetworkRequest& request, QByteArray& data);
-	virtual QNetworkRequest createFetchNetworkRequest();
+	void createSaveNetworkRequest(QNetworkRequest& request, QByteArray& data);
+	void createSaveAllNetworkRequest(PFObjectList objects, QNetworkRequest& request, QByteArray& data);
+	QNetworkRequest createDeleteObjectNetworkRequest();
+	void createDeleteAllObjectsNetworkRequest(PFObjectList objects, QNetworkRequest& request, QByteArray& data);
+	QNetworkRequest createFetchNetworkRequest();
 
 	// Network Reply Deserialization Methods
 	bool deserializeSaveNetworkReply(QNetworkReply* networkReply, bool updated, PFErrorPtr& error);
