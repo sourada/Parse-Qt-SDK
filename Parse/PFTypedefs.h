@@ -21,6 +21,7 @@ class PFDateTime;
 class PFError;
 class PFFile;
 class PFObject;
+class PFQuery;
 class PFSerializable;
 class PFUser;
 
@@ -30,6 +31,7 @@ typedef QSharedPointer<PFDateTime> PFDateTimePtr;
 typedef QSharedPointer<PFError> PFErrorPtr;
 typedef QSharedPointer<PFFile> PFFilePtr;
 typedef QSharedPointer<PFObject> PFObjectPtr;
+typedef QSharedPointer<PFQuery> PFQueryPtr;
 typedef QSharedPointer<PFSerializable> PFSerializablePtr;
 typedef QSharedPointer<PFUser> PFUserPtr;
 
