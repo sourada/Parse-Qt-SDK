@@ -67,6 +67,21 @@ void PFQuery::whereKeyNotEqualTo(const QString& key, const QVariant& object)
 
 #pragma mark - Get Object Methods
 
+PFObjectPtr PFQuery::getObjectOfClassWithId(const QString& className, const QString& objectId)
+{
+	PFErrorPtr error;
+	return getObjectOfClassWithId(className, objectId, error);
+}
+
+PFObjectPtr PFQuery::getObjectOfClassWithId(const QString& className, const QString& objectId, PFErrorPtr& error)
+{
+	PFQueryPtr query = PFQuery::queryWithClassName(className);
+	if (query.isNull())
+		return PFObjectPtr();
+	else
+		return query->getObjectWithId(objectId, error);
+}
+
 PFObjectPtr PFQuery::getObjectWithId(const QString& objectId)
 {
 	PFErrorPtr error;

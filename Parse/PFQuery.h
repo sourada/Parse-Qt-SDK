@@ -36,6 +36,8 @@ public:
 	void whereKeyNotEqualTo(const QString& key, const QVariant& object);
 
 	// Get Object Methods - getObjectCompleteAction signature: (PFObjectPtr object, PFErrorPtr error)
+	static PFObjectPtr getObjectOfClassWithId(const QString& className, const QString& objectId);
+	static PFObjectPtr getObjectOfClassWithId(const QString& className, const QString& objectId, PFErrorPtr& error);
 	PFObjectPtr getObjectWithId(const QString& objectId);
 	PFObjectPtr getObjectWithId(const QString& objectId, PFErrorPtr& error);
 	void getObjectWithIdInBackground(const QString& objectId, QObject* getObjectCompleteTarget, const char* getObjectCompleteAction);
