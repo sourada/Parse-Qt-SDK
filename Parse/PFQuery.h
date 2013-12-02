@@ -31,7 +31,11 @@ public:
 	// Creation Methods
 	static PFQueryPtr queryWithClassName(const QString& className);
 
-	// Find Objects Methods - fetchCompleteAction signature: (bool succeeded, PFErrorPtr error)
+	// Key Constraint Methods
+	void whereKeyEqualTo(const QString& key, const QVariant& object);
+	void whereKeyNotEqualTo(const QString& key, const QVariant& object);
+
+	// Find Objects Methods - findCompleteAction signature: (bool succeeded, PFErrorPtr error)
 	PFObjectList findObjects();
 	PFObjectList findObjects(PFErrorPtr& error);
 	void findObjectsInBackground(QObject* findCompleteTarget, const char* findCompleteAction);
@@ -65,8 +69,14 @@ protected:
 	// Network Reply Deserialization Methods
 	PFObjectList deserializeFindObjectsNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 
+	// Key Helper Methods
+	void addWhereOption(const QString& key, const QString& option, const QVariant& object);
+	QJsonObject fetchWhereKeyObject(const QString& key);
+
 	// Instance members
-	QString _className;
+	QString			_className;
+	QVariantMap		_whereMap;
+	QSet<QString>	_whereEqualKeys;
 };
 
 }	// End of parse namespace

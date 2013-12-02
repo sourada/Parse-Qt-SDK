@@ -7,6 +7,7 @@
 //
 
 // Parse headers
+#include "PFConversion.h"
 #include "PFError.h"
 #include "PFManager.h"
 #include "PFObject.h"
@@ -18,6 +19,7 @@
 #include <QEventLoop>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QUrlQuery>
 
 namespace parse {
 
@@ -26,9 +28,6 @@ namespace parse {
 PFQuery::PFQuery()
 {
 	qDebug().nospace() << "Created PFQuery(" << QString().sprintf("%8p", this) << ")";
-
-	// Set up ivar defaults
-	_className = "";
 }
 
 PFQuery::~PFQuery()
@@ -51,6 +50,19 @@ PFQueryPtr PFQuery::queryWithClassName(const QString& className)
 		query->_className = className;
 		return query;
 	}
+}
+
+#pragma mark - Key Constraints
+
+void PFQuery::whereKeyEqualTo(const QString& key, const QVariant& object)
+{
+	_whereMap[key] = object;
+	_whereEqualKeys.insert(key);
+}
+
+void PFQuery::whereKeyNotEqualTo(const QString& key, const QVariant& object)
+{
+	addWhereOption(key, "$ne", object);
 }
 
 #pragma mark - Find Objects Methods
@@ -126,8 +138,25 @@ void PFQuery::handleFindObjectsCompleted(QNetworkReply* networkReply)
 
 QNetworkRequest PFQuery::createFindObjectsNetworkRequest()
 {
+	// Create the url
 	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _className);
+	QUrlQuery urlQuery;
+
+	// Attach the "where" query
+	if (!_whereMap.isEmpty())
+	{
+		QJsonObject whereJsonObject = PFConversion::convertVariantToJson(_whereMap).toObject();
+		QString whereJsonString = QString::fromUtf8(QJsonDocument(whereJsonObject).toJson(QJsonDocument::Compact));
+		urlQuery.addQueryItem("where", whereJsonString);
+	}
+
+	// Attach the url query to the url
+	url.setQuery(urlQuery);
+
+	// Create the request
 	QNetworkRequest request(url);
+
+	// Attach the necessary raw headers
 	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
 	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
 
@@ -177,6 +206,25 @@ PFObjectList PFQuery::deserializeFindObjectsNetworkReply(QNetworkReply* networkR
 	}
 
 	return objects;
+}
+
+#pragma mark - Key Helper Methods
+
+void PFQuery::addWhereOption(const QString& key, const QString& option, const QVariant& object)
+{
+	// Remove the equal key and object if it was previously set to be an equal key
+	if (_whereEqualKeys.contains(key))
+	{
+		_whereMap.remove(key);
+		_whereEqualKeys.remove(key);
+	}
+
+	// Fetch the previous key map or create a new one
+	QVariantMap keyMap = _whereMap.value(key, QVariantMap()).toMap();
+
+	// Add the new options to the key map and update the where map
+	keyMap[option] = object;
+	_whereMap[key] = keyMap;
 }
 
 }	// End of parse namespace
