@@ -32,6 +32,7 @@ PFQuery::PFQuery()
 	// Set ivar defaults
 	_limit = -1;
 	_skip = -1;
+	_getObjectReply = NULL;
 	_findReply = NULL;
 	_countReply = NULL;
 }
@@ -180,10 +181,10 @@ void PFQuery::getObjectWithIdInBackground(const QString& objectId, QObject* getO
 
 	// Execute the request
 	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
-	networkAccessManager->get(networkRequest);
+	_getObjectReply = networkAccessManager->get(networkRequest);
 
 	// Connect all the callbacks
-	QObject::connect(networkAccessManager, SIGNAL(finished(QNetworkReply*)), this, SLOT(handleGetObjectCompleted(QNetworkReply*)));
+	QObject::connect(_getObjectReply, SIGNAL(finished()), this, SLOT(handleGetObjectCompleted()));
 	QObject::connect(this, SIGNAL(getObjectCompleted(PFObjectPtr, PFErrorPtr)), getObjectCompleteTarget, getObjectCompleteAction);
 }
 
@@ -281,6 +282,15 @@ void PFQuery::countObjectsInBackground(QObject* countCompleteTarget, const char*
 
 void PFQuery::cancel()
 {
+	if (_getObjectReply)
+	{
+		qDebug() << "Cancelling PFQuery get object operation";
+		disconnect(SIGNAL(getObjectCompleted(PFObjectPtr, PFErrorPtr)));
+		_getObjectReply->disconnect();
+		_getObjectReply->abort();
+		_getObjectReply->deleteLater();
+	}
+
 	if (_findReply)
 	{
 		qDebug() << "Cancelling PFQuery find objects operation";
@@ -309,22 +319,21 @@ const QString& PFQuery::className()
 
 #pragma mark - Background Network Reply Completion Slots
 
-void PFQuery::handleGetObjectCompleted(QNetworkReply* networkReply)
+void PFQuery::handleGetObjectCompleted()
 {
-	// Disconnect the network access manager as well as all the connected signals to this instance
-	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
-	networkAccessManager->disconnect(this);
+	// Disconnect the get object reply from this instance
+	_getObjectReply->disconnect(this);
 
 	// Deserialize the reply
 	PFErrorPtr error;
-	PFObjectPtr object = deserializeGetObjectNetworkReply(networkReply, error);
+	PFObjectPtr object = deserializeGetObjectNetworkReply(_getObjectReply, error);
 
 	// Emit the signal that the request completed and then disconnect it
 	emit getObjectCompleted(object, error);
 	this->disconnect(SIGNAL(getObjectCompleted(PFObjectPtr, PFErrorPtr)));
 
 	// Clean up
-	networkReply->deleteLater();
+	_getObjectReply->deleteLater();
 }
 
 void PFQuery::handleFindObjectsCompleted()

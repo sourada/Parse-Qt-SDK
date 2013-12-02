@@ -77,7 +77,7 @@ public:
 protected slots:
 
 	// Background Network Reply Completion Slots
-	void handleGetObjectCompleted(QNetworkReply* networkReply);
+	void handleGetObjectCompleted();
 	void handleFindObjectsCompleted();
 	void handleCountObjectsCompleted();
 
@@ -115,6 +115,7 @@ protected:
 	QStringList		_orderKeys;
 	int				_limit;
 	int				_skip;
+	QNetworkReply*	_getObjectReply;
 	QNetworkReply*	_findReply;
 	QNetworkReply*	_countReply;
 };

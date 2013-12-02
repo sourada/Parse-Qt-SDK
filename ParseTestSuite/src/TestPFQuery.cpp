@@ -762,10 +762,12 @@ void TestPFQuery::test_cancel()
 	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
 	query->cancel();
 
+	// Start up a background get object query and cancel it.
+	query = PFQuery::queryWithClassName("Official");
+	query->getObjectWithIdInBackground("", this, SLOT(findObjectsCompleted(PFObjectList, PFErrorPtr)));
+	query->cancel();
+
 	// Start up a background find query and cancel it.
-	// NOTE: There's nothing to actually test here since we have a void return type. The only way
-	// to make sure this is working properly is to look at the debug output and verify the operation
-	// was actually cancelled.
 	query = PFQuery::queryWithClassName("Official");
 	query->findObjectsInBackground(this, SLOT(findObjectsCompleted(PFObjectList, PFErrorPtr)));
 	query->cancel();
