@@ -155,9 +155,7 @@ bool areEqual(const QVariant& variant1, const QVariant& variant2)
 			QJsonObject jsonVariant1, jsonVariant2;
 			serializable1->toJson(jsonVariant1);
 			serializable2->toJson(jsonVariant2);
-			QByteArray json1 = QJsonDocument(jsonVariant1).toJson();
-			QByteArray json2 = QJsonDocument(jsonVariant2).toJson();
-			return (json1 == json2);
+			return (jsonVariant1 == jsonVariant2);
 		}
 	}
 
