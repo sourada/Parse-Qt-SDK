@@ -65,6 +65,61 @@ void PFQuery::whereKeyNotEqualTo(const QString& key, const QVariant& object)
 	addWhereOption(key, "$ne", object);
 }
 
+#pragma mark - Get Object Methods
+
+PFObjectPtr PFQuery::getObjectWithId(const QString& objectId)
+{
+	PFErrorPtr error;
+	return getObjectWithId(objectId, error);
+}
+
+PFObjectPtr PFQuery::getObjectWithId(const QString& objectId, PFErrorPtr& error)
+{
+	// Reset the where map and add the object id key
+	_whereMap.clear();
+	_whereEqualKeys.clear();
+	whereKeyEqualTo("objectId", objectId);
+
+	// Prep the request and data
+	QNetworkRequest networkRequest = createGetObjectNetworkRequest();
+
+	// Execute the request and connect the callbacks
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	QNetworkReply* networkReply = networkAccessManager->get(networkRequest);
+
+	// Block the async nature of the request using our own event loop until the reply finishes
+	QEventLoop eventLoop;
+	QObject::connect(networkReply, SIGNAL(finished()), &eventLoop, SLOT(quit()));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+
+	// Deserialize the reply
+	PFObjectPtr object = deserializeGetObjectNetworkReply(networkReply, error);
+
+	// Clean up
+	networkReply->deleteLater();
+
+	return object;
+}
+
+void PFQuery::getObjectWithIdInBackground(const QString& objectId, QObject* getObjectCompleteTarget, const char* getObjectCompleteAction)
+{
+	// Reset the where map and add the object id key
+	_whereMap.clear();
+	_whereEqualKeys.clear();
+	whereKeyEqualTo("objectId", objectId);
+
+	// Prep the request and data
+	QNetworkRequest networkRequest = createGetObjectNetworkRequest();
+
+	// Execute the request
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	networkAccessManager->get(networkRequest);
+
+	// Connect all the callbacks
+	QObject::connect(networkAccessManager, SIGNAL(finished(QNetworkReply*)), this, SLOT(handleGetObjectCompleted(QNetworkReply*)));
+	QObject::connect(this, SIGNAL(getObjectCompleted(PFObjectPtr, PFErrorPtr)), getObjectCompleteTarget, getObjectCompleteAction);
+}
+
 #pragma mark - Find Objects Methods
 
 PFObjectList PFQuery::findObjects()
@@ -89,6 +144,9 @@ PFObjectList PFQuery::findObjects(PFErrorPtr& error)
 
 	// Deserialize the reply
 	const PFObjectList& objects = deserializeFindObjectsNetworkReply(networkReply, error);
+
+	// Clean up
+	networkReply->deleteLater();
 
 	return objects;
 }
@@ -116,6 +174,24 @@ const QString& PFQuery::className()
 
 #pragma mark - Background Network Reply Completion Slots
 
+void PFQuery::handleGetObjectCompleted(QNetworkReply* networkReply)
+{
+	// Disconnect the network access manager as well as all the connected signals to this instance
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	networkAccessManager->disconnect(this);
+
+	// Deserialize the reply
+	PFErrorPtr error;
+	PFObjectPtr object = deserializeGetObjectNetworkReply(networkReply, error);
+
+	// Emit the signal that the request completed and then disconnect it
+	emit getObjectCompleted(object, error);
+	this->disconnect(SIGNAL(getObjectCompleted(PFObjectPtr, PFErrorPtr)));
+
+	// Clean up
+	networkReply->deleteLater();
+}
+
 void PFQuery::handleFindObjectsCompleted(QNetworkReply* networkReply)
 {
 	// Disconnect the network access manager as well as all the connected signals to this instance
@@ -135,6 +211,34 @@ void PFQuery::handleFindObjectsCompleted(QNetworkReply* networkReply)
 }
 
 #pragma mark - Network Request Builder Methods
+
+QNetworkRequest PFQuery::createGetObjectNetworkRequest()
+{
+	// Create the url
+	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _className);
+	QUrlQuery urlQuery;
+
+	// Attach the "where" query
+	QJsonObject whereJsonObject = PFConversion::convertVariantToJson(_whereMap).toObject();
+	QString whereJsonString = QString::fromUtf8(QJsonDocument(whereJsonObject).toJson(QJsonDocument::Compact));
+	urlQuery.addQueryItem("where", whereJsonString);
+
+	// Attach the url query to the url
+	url.setQuery(urlQuery);
+
+	// Create the request
+	QNetworkRequest request(url);
+
+	// Attach the necessary raw headers
+	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
+	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
+
+	// Attach the session token if we're authenticated as a particular user
+	if (PFUser::currentUser() && PFUser::currentUser()->isAuthenticated())
+		request.setRawHeader(QString("X-Parse-Session-Token").toUtf8(), PFUser::currentUser()->sessionToken().toUtf8());
+
+	return request;
+}
 
 QNetworkRequest PFQuery::createFindObjectsNetworkRequest()
 {
@@ -168,6 +272,17 @@ QNetworkRequest PFQuery::createFindObjectsNetworkRequest()
 }
 
 #pragma mark - Network Reply Deserialization Methods
+
+PFObjectPtr PFQuery::deserializeGetObjectNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error)
+{
+	// Just use the find objects deserialization since they are the same
+	PFObjectList objects = deserializeFindObjectsNetworkReply(networkReply, error);
+	PFObjectPtr object;
+	if (!objects.isEmpty())
+		object = objects.at(0);
+
+	return object;
+}
 
 PFObjectList PFQuery::deserializeFindObjectsNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error)
 {

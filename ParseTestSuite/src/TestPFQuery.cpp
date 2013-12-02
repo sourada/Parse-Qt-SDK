@@ -18,6 +18,13 @@ class TestPFQuery : public QObject
 
 public slots:
 
+	void getObjectCompleted(PFObjectPtr object, PFErrorPtr error)
+	{
+		_getObject = object;
+		_getObjectError = error;
+		emit getObjectEnded();
+	}
+
 	void findObjectsCompleted(PFObjectList objects, PFErrorPtr error)
 	{
 		_findObjects = objects;
@@ -27,6 +34,7 @@ public slots:
 
 signals:
 
+	void getObjectEnded();
 	void findObjectsEnded();
 
 private slots:
@@ -92,6 +100,8 @@ private slots:
 
 	void cleanup()
 	{
+		_getObject = PFObjectPtr();
+		_getObjectError = PFErrorPtr();
 		_findObjects.clear();
 		_findObjectsError = PFErrorPtr();
 	}
@@ -102,6 +112,11 @@ private slots:
 	// Key Constraint Methods
 	void test_whereKeyEqualTo();
 	void test_whereKeyNotEqualTo();
+
+	// Get Object Methods
+	void test_getObjectWithId();
+	void test_getObjectWithIdWithError();
+	void test_getObjectWithIdInBackground();
 
 	// Find Objects Methods
 	void test_findObjects();
@@ -116,6 +131,8 @@ private:
 	// Instance members
 	PFObjectList	_objects;
 	PFObjectPtr		_umpire;
+	PFObjectPtr		_getObject;
+	PFErrorPtr		_getObjectError;
 	PFObjectList	_findObjects;
 	PFErrorPtr		_findObjectsError;
 };
@@ -229,6 +246,97 @@ void TestPFQuery::test_whereKeyNotEqualTo()
 		QCOMPARE(object->objectForKey("timeSegment").toString().isEmpty(), false);
 		QCOMPARE(object->objectForKey("totalPlayers").toInt() > 0, true);
 	}
+}
+
+void TestPFQuery::test_getObjectWithId()
+{
+	// Invalid Case - query for a class that does exist with an empty object id
+	PFQueryPtr invalidQuery = PFQuery::queryWithClassName("TheresNoPossibleWayToGetMe");
+	PFObjectPtr invalidObject = invalidQuery->getObjectWithId("");
+	QCOMPARE(invalidObject.isNull(), true);
+
+	// Valid Case - no matching object for the empty object id
+	PFQueryPtr emptyQuery = PFQuery::queryWithClassName("Sport");
+	PFObjectPtr emptyObject = emptyQuery->getObjectWithId("");
+	QCOMPARE(emptyObject.isNull(), true);
+
+	// Valid Case - get the umpire object
+	PFQueryPtr query = PFQuery::queryWithClassName("Official");
+	PFObjectPtr umpire = query->getObjectWithId(_umpire->objectId());
+	QCOMPARE(umpire.isNull(), false);
+	QCOMPARE(umpire->className(), QString("Official"));
+	QCOMPARE(umpire->objectId().isEmpty(), false);
+	QCOMPARE(umpire->objectForKey("name").toString(), QString("Umpire"));
+	QCOMPARE(umpire->objectForKey("sport").toString(), QString("Baseball"));
+}
+
+void TestPFQuery::test_getObjectWithIdWithError()
+{
+	// Invalid Case - query for a class that does exist with an empty object id
+	PFErrorPtr invalidQueryError;
+	PFQueryPtr invalidQuery = PFQuery::queryWithClassName("TheresNoPossibleWayToGetMe");
+	PFObjectPtr invalidObject = invalidQuery->getObjectWithId("", invalidQueryError);
+	QCOMPARE(invalidObject.isNull(), true);
+	QCOMPARE(invalidQueryError.isNull(), true);
+
+	// Valid Case - no matching object for the empty object id
+	PFErrorPtr emptyQueryError;
+	PFQueryPtr emptyQuery = PFQuery::queryWithClassName("Sport");
+	PFObjectPtr emptyObject = emptyQuery->getObjectWithId("", emptyQueryError);
+	QCOMPARE(emptyObject.isNull(), true);
+	QCOMPARE(emptyQueryError.isNull(), true);
+
+	// Valid Case - get the umpire object
+	PFErrorPtr queryError;
+	PFQueryPtr query = PFQuery::queryWithClassName("Official");
+	PFObjectPtr umpire = query->getObjectWithId(_umpire->objectId(), queryError);
+	QCOMPARE(umpire.isNull(), false);
+	QCOMPARE(queryError.isNull(), true);
+	QCOMPARE(umpire->className(), QString("Official"));
+	QCOMPARE(umpire->objectId().isEmpty(), false);
+	QCOMPARE(umpire->objectForKey("name").toString(), QString("Umpire"));
+	QCOMPARE(umpire->objectForKey("sport").toString(), QString("Baseball"));
+}
+
+void TestPFQuery::test_getObjectWithIdInBackground()
+{
+	// Use an event loop to block until we receive the completion
+	QEventLoop eventLoop;
+	QObject::connect(this, SIGNAL(getObjectEnded()), &eventLoop, SLOT(quit()));
+
+	// Invalid Case - query for a class that does exist with an empty object id
+	PFQueryPtr invalidQuery = PFQuery::queryWithClassName("TheresNoPossibleWayToGetMe");
+	invalidQuery->getObjectWithIdInBackground("", this, SLOT(getObjectCompleted(PFObjectPtr, PFErrorPtr)));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_getObject.isNull(), true);
+	QCOMPARE(_getObjectError.isNull(), true);
+
+	// Reset callback flags
+	_getObject = PFObjectPtr();
+	_getObjectError = PFErrorPtr();
+
+	// Valid Case - no matching object for the empty object id
+	PFQueryPtr emptyQuery = PFQuery::queryWithClassName("Sport");
+	emptyQuery->getObjectWithIdInBackground("", this, SLOT(getObjectCompleted(PFObjectPtr, PFErrorPtr)));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_getObject.isNull(), true);
+	QCOMPARE(_getObjectError.isNull(), true);
+
+	// Reset callback flags
+	_getObject = PFObjectPtr();
+	_getObjectError = PFErrorPtr();
+
+	// Valid Case - get the umpire object
+	PFQueryPtr query = PFQuery::queryWithClassName("Official");
+	query->getObjectWithIdInBackground(_umpire->objectId(), this, SLOT(getObjectCompleted(PFObjectPtr, PFErrorPtr)));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_getObjectError.isNull(), true);
+	PFObjectPtr umpire = _getObject;
+	QCOMPARE(umpire.isNull(), false);
+	QCOMPARE(umpire->className(), QString("Official"));
+	QCOMPARE(umpire->objectId().isEmpty(), false);
+	QCOMPARE(umpire->objectForKey("name").toString(), QString("Umpire"));
+	QCOMPARE(umpire->objectForKey("sport").toString(), QString("Baseball"));
 }
 
 void TestPFQuery::test_findObjects()

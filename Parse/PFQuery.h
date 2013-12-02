@@ -35,6 +35,11 @@ public:
 	void whereKeyEqualTo(const QString& key, const QVariant& object);
 	void whereKeyNotEqualTo(const QString& key, const QVariant& object);
 
+	// Get Object Methods - getObjectCompleteAction signature: (PFObjectPtr object, PFErrorPtr error)
+	PFObjectPtr getObjectWithId(const QString& objectId);
+	PFObjectPtr getObjectWithId(const QString& objectId, PFErrorPtr& error);
+	void getObjectWithIdInBackground(const QString& objectId, QObject* getObjectCompleteTarget, const char* getObjectCompleteAction);
+
 	// Find Objects Methods - findCompleteAction signature: (bool succeeded, PFErrorPtr error)
 	PFObjectList findObjects();
 	PFObjectList findObjects(PFErrorPtr& error);
@@ -50,11 +55,13 @@ public:
 protected slots:
 
 	// Background Network Reply Completion Slots
+	void handleGetObjectCompleted(QNetworkReply* networkReply);
 	void handleFindObjectsCompleted(QNetworkReply* networkReply);
 
 signals:
 
 	// Background Request Completion Signals
+	void getObjectCompleted(PFObjectPtr object, PFErrorPtr error);
 	void findObjectsCompleted(PFObjectList objects, PFErrorPtr error);
 
 protected:
@@ -64,9 +71,11 @@ protected:
 	~PFQuery();
 
 	// Network Request Builder Methods
+	QNetworkRequest createGetObjectNetworkRequest();
 	QNetworkRequest createFindObjectsNetworkRequest();
 
 	// Network Reply Deserialization Methods
+	PFObjectPtr deserializeGetObjectNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 	PFObjectList deserializeFindObjectsNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 
 	// Key Helper Methods
