@@ -317,7 +317,6 @@ void TestPFQuery::test_findObjectsInBackground()
 
 	// Invalid Case - query for a class that does exist
 	PFQueryPtr invalidQuery = PFQuery::queryWithClassName("TheresNoPossibleWayToGetMe");
-	PFObjectList invalidObjects = invalidQuery->findObjects();
 	invalidQuery->findObjectsInBackground(this, SLOT(findObjectsCompleted(PFObjectList, PFErrorPtr)));
 	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
 	QCOMPARE(_findObjects.length(), 0);
