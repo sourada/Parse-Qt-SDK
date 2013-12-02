@@ -336,8 +336,19 @@ void PFUser::requestPasswordResetForEmailInBackground(const QString& email, QObj
 
 QVariant PFUser::fromJson(const QJsonObject& jsonObject)
 {
+	// Create a new PFObject using the className and objectId
 	QString objectId = jsonObject["objectId"].toString();
 	PFUserPtr user = PFUser::userWithObjectId(objectId);
+
+	// Remove some properties from the json object to allow us to recursively convert everything else to our properties
+	QJsonObject duplicateJsonObject = jsonObject;
+	duplicateJsonObject.remove("__type");
+	duplicateJsonObject.remove("className");
+	duplicateJsonObject.remove("objectId");
+
+	// Convert the entire json object into a properties variant map and strip out the instance members
+	user->_properties = PFConversion::convertJsonToVariant(duplicateJsonObject).toMap();
+	user->stripInstanceMembersFromProperties();
 
 	return toVariant(user);
 }
