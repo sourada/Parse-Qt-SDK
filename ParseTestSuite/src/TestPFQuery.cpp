@@ -113,6 +113,12 @@ private slots:
 	void test_whereKeyEqualTo();
 	void test_whereKeyNotEqualTo();
 
+	// Sorting Methods
+	void test_orderByAscending();
+	void test_orderByDescending();
+	void test_addAscendingOrder();
+	void test_addDescendingOrder();
+
 	// Get Object Methods
 	void test_getObjectOfClassWithId();
 	void test_getObjectOfClassWithIdWithError();
@@ -248,6 +254,106 @@ void TestPFQuery::test_whereKeyNotEqualTo()
 		QCOMPARE(object->objectForKey("timeSegment").toString().isEmpty(), false);
 		QCOMPARE(object->objectForKey("totalPlayers").toInt() > 0, true);
 	}
+}
+
+void TestPFQuery::test_orderByAscending()
+{
+	// Sort by name
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	query->orderByAscending("name");
+	PFObjectList objects = query->findObjects();
+	QCOMPARE(objects.count(), 3);
+	QCOMPARE(objects.at(0)->objectForKey("name").toString(), QString("Baseball"));
+	QCOMPARE(objects.at(1)->objectForKey("name").toString(), QString("Basketball"));
+	QCOMPARE(objects.at(2)->objectForKey("name").toString(), QString("Football"));
+
+	// Sort by totalPlayers
+	PFQueryPtr query2 = PFQuery::queryWithClassName("Sport");
+	query2->orderByAscending("totalPlayers");
+	PFObjectList objects2 = query2->findObjects();
+	QCOMPARE(objects2.count(), 3);
+	QCOMPARE(objects2.at(0)->objectForKey("name").toString(), QString("Basketball"));
+	QCOMPARE(objects2.at(1)->objectForKey("name").toString(), QString("Baseball"));
+	QCOMPARE(objects2.at(2)->objectForKey("name").toString(), QString("Football"));
+	QCOMPARE(objects2.at(0)->objectForKey("totalPlayers").toInt(), 10);
+	QCOMPARE(objects2.at(1)->objectForKey("totalPlayers").toInt(), 18);
+	QCOMPARE(objects2.at(2)->objectForKey("totalPlayers").toInt(), 22);
+}
+
+void TestPFQuery::test_orderByDescending()
+{
+	// Sort by name
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	query->orderByDescending("name");
+	PFObjectList objects = query->findObjects();
+	QCOMPARE(objects.count(), 3);
+	QCOMPARE(objects.at(0)->objectForKey("name").toString(), QString("Football"));
+	QCOMPARE(objects.at(1)->objectForKey("name").toString(), QString("Basketball"));
+	QCOMPARE(objects.at(2)->objectForKey("name").toString(), QString("Baseball"));
+
+	// Sort by totalPlayers
+	PFQueryPtr query2 = PFQuery::queryWithClassName("Sport");
+	query2->orderByDescending("totalPlayers");
+	PFObjectList objects2 = query2->findObjects();
+	QCOMPARE(objects2.count(), 3);
+	QCOMPARE(objects2.at(0)->objectForKey("name").toString(), QString("Football"));
+	QCOMPARE(objects2.at(1)->objectForKey("name").toString(), QString("Baseball"));
+	QCOMPARE(objects2.at(2)->objectForKey("name").toString(), QString("Basketball"));
+	QCOMPARE(objects2.at(0)->objectForKey("totalPlayers").toInt(), 22);
+	QCOMPARE(objects2.at(1)->objectForKey("totalPlayers").toInt(), 18);
+	QCOMPARE(objects2.at(2)->objectForKey("totalPlayers").toInt(), 10);
+}
+
+void TestPFQuery::test_addAscendingOrder()
+{
+	// Sort by name (will ignore totalPlayers since no key values are the same)
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	query->addAscendingOrder("name");
+	query->addAscendingOrder("totalPlayers");
+	PFObjectList objects = query->findObjects();
+	QCOMPARE(objects.count(), 3);
+	QCOMPARE(objects.at(0)->objectForKey("name").toString(), QString("Baseball"));
+	QCOMPARE(objects.at(1)->objectForKey("name").toString(), QString("Basketball"));
+	QCOMPARE(objects.at(2)->objectForKey("name").toString(), QString("Football"));
+
+	// Sort by totalPlayers (will ignore name since no key values are the same)
+	PFQueryPtr query2 = PFQuery::queryWithClassName("Sport");
+	query2->addAscendingOrder("totalPlayers");
+	query2->addAscendingOrder("name");
+	PFObjectList objects2 = query2->findObjects();
+	QCOMPARE(objects2.count(), 3);
+	QCOMPARE(objects2.at(0)->objectForKey("name").toString(), QString("Basketball"));
+	QCOMPARE(objects2.at(1)->objectForKey("name").toString(), QString("Baseball"));
+	QCOMPARE(objects2.at(2)->objectForKey("name").toString(), QString("Football"));
+	QCOMPARE(objects2.at(0)->objectForKey("totalPlayers").toInt(), 10);
+	QCOMPARE(objects2.at(1)->objectForKey("totalPlayers").toInt(), 18);
+	QCOMPARE(objects2.at(2)->objectForKey("totalPlayers").toInt(), 22);
+}
+
+void TestPFQuery::test_addDescendingOrder()
+{
+	// Sort by name (will ignore totalPlayers since no key values are the same)
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	query->addDescendingOrder("name");
+	query->addDescendingOrder("totalPlayers");
+	PFObjectList objects = query->findObjects();
+	QCOMPARE(objects.count(), 3);
+	QCOMPARE(objects.at(0)->objectForKey("name").toString(), QString("Football"));
+	QCOMPARE(objects.at(1)->objectForKey("name").toString(), QString("Basketball"));
+	QCOMPARE(objects.at(2)->objectForKey("name").toString(), QString("Baseball"));
+
+	// Sort by totalPlayers (will ignore name since no key values are the same)
+	PFQueryPtr query2 = PFQuery::queryWithClassName("Sport");
+	query2->addDescendingOrder("totalPlayers");
+	query2->addDescendingOrder("name");
+	PFObjectList objects2 = query2->findObjects();
+	QCOMPARE(objects2.count(), 3);
+	QCOMPARE(objects2.at(0)->objectForKey("name").toString(), QString("Football"));
+	QCOMPARE(objects2.at(1)->objectForKey("name").toString(), QString("Baseball"));
+	QCOMPARE(objects2.at(2)->objectForKey("name").toString(), QString("Basketball"));
+	QCOMPARE(objects2.at(0)->objectForKey("totalPlayers").toInt(), 22);
+	QCOMPARE(objects2.at(1)->objectForKey("totalPlayers").toInt(), 18);
+	QCOMPARE(objects2.at(2)->objectForKey("totalPlayers").toInt(), 10);
 }
 
 void TestPFQuery::test_getObjectOfClassWithId()

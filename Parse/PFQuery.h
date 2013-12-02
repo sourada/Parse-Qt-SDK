@@ -35,6 +35,12 @@ public:
 	void whereKeyEqualTo(const QString& key, const QVariant& object);
 	void whereKeyNotEqualTo(const QString& key, const QVariant& object);
 
+	// Sorting Methods
+	void orderByAscending(const QString& key);
+	void orderByDescending(const QString& key);
+	void addAscendingOrder(const QString& key);
+	void addDescendingOrder(const QString& key);
+
 	// Get Object Methods - getObjectCompleteAction signature: (PFObjectPtr object, PFErrorPtr error)
 	static PFObjectPtr getObjectOfClassWithId(const QString& className, const QString& objectId);
 	static PFObjectPtr getObjectOfClassWithId(const QString& className, const QString& objectId, PFErrorPtr& error);
@@ -88,6 +94,7 @@ protected:
 	QString			_className;
 	QVariantMap		_whereMap;
 	QSet<QString>	_whereEqualKeys;
+	QStringList		_orderKeys;
 };
 
 }	// End of parse namespace

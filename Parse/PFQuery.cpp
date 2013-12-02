@@ -65,6 +65,30 @@ void PFQuery::whereKeyNotEqualTo(const QString& key, const QVariant& object)
 	addWhereOption(key, "$ne", object);
 }
 
+#pragma mark - Sorting Methods
+
+void PFQuery::orderByAscending(const QString& key)
+{
+	_orderKeys.clear();
+	_orderKeys.append(key);
+}
+
+void PFQuery::orderByDescending(const QString& key)
+{
+	_orderKeys.clear();
+	_orderKeys.append(QString("-") + key);
+}
+
+void PFQuery::addAscendingOrder(const QString& key)
+{
+	_orderKeys.append(key);
+}
+
+void PFQuery::addDescendingOrder(const QString& key)
+{
+	_orderKeys.append(QString("-") + key);
+}
+
 #pragma mark - Get Object Methods
 
 PFObjectPtr PFQuery::getObjectOfClassWithId(const QString& className, const QString& objectId)
@@ -267,6 +291,13 @@ QNetworkRequest PFQuery::createFindObjectsNetworkRequest()
 		QJsonObject whereJsonObject = PFConversion::convertVariantToJson(_whereMap).toObject();
 		QString whereJsonString = QString::fromUtf8(QJsonDocument(whereJsonObject).toJson(QJsonDocument::Compact));
 		urlQuery.addQueryItem("where", whereJsonString);
+	}
+
+	// Attach the "order" query
+	if (!_orderKeys.isEmpty())
+	{
+		QString orderString = _orderKeys.join(",");
+		urlQuery.addQueryItem("order", orderString);
 	}
 
 	// Attach the url query to the url
