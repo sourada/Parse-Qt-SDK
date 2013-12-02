@@ -28,6 +28,10 @@ namespace parse {
 PFQuery::PFQuery()
 {
 	qDebug().nospace() << "Created PFQuery(" << QString().sprintf("%8p", this) << ")";
+
+	// Set ivar defaults
+	_limit = -1;
+	_skip = -1;
 }
 
 PFQuery::~PFQuery()
@@ -87,6 +91,28 @@ void PFQuery::addAscendingOrder(const QString& key)
 void PFQuery::addDescendingOrder(const QString& key)
 {
 	_orderKeys.append(QString("-") + key);
+}
+
+#pragma mark - Pagination Methods
+
+void PFQuery::setLimit(int limit)
+{
+	_limit = limit;
+}
+
+int PFQuery::limit()
+{
+	return _limit;
+}
+
+void PFQuery::setSkip(int skip)
+{
+	_skip = skip;
+}
+
+int PFQuery::skip()
+{
+	return _skip;
 }
 
 #pragma mark - Get Object Methods
@@ -298,6 +324,20 @@ QNetworkRequest PFQuery::createFindObjectsNetworkRequest()
 	{
 		QString orderString = _orderKeys.join(",");
 		urlQuery.addQueryItem("order", orderString);
+	}
+
+	// Attach the "limit" query
+	if (_limit != -1)
+	{
+		QString limitString = QString::number(_limit);
+		urlQuery.addQueryItem("limit", limitString);
+	}
+
+	// Attach the "skip" query
+	if (_skip != -1)
+	{
+		QString skipString = QString::number(_skip);
+		urlQuery.addQueryItem("skip", skipString);
 	}
 
 	// Attach the url query to the url

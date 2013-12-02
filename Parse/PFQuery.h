@@ -41,6 +41,12 @@ public:
 	void addAscendingOrder(const QString& key);
 	void addDescendingOrder(const QString& key);
 
+	// Pagination Methods
+	void setLimit(int limit);
+	int limit();
+	void setSkip(int skip);
+	int skip();
+
 	// Get Object Methods - getObjectCompleteAction signature: (PFObjectPtr object, PFErrorPtr error)
 	static PFObjectPtr getObjectOfClassWithId(const QString& className, const QString& objectId);
 	static PFObjectPtr getObjectOfClassWithId(const QString& className, const QString& objectId, PFErrorPtr& error);
@@ -95,6 +101,8 @@ protected:
 	QVariantMap		_whereMap;
 	QSet<QString>	_whereEqualKeys;
 	QStringList		_orderKeys;
+	int				_limit;
+	int				_skip;
 };
 
 }	// End of parse namespace

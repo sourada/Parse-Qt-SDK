@@ -119,6 +119,12 @@ private slots:
 	void test_addAscendingOrder();
 	void test_addDescendingOrder();
 
+	// Pagination Methods
+	void test_setLimit();
+	void test_limit();
+	void test_setSkip();
+	void test_skip();
+
 	// Get Object Methods
 	void test_getObjectOfClassWithId();
 	void test_getObjectOfClassWithIdWithError();
@@ -354,6 +360,58 @@ void TestPFQuery::test_addDescendingOrder()
 	QCOMPARE(objects2.at(0)->objectForKey("totalPlayers").toInt(), 22);
 	QCOMPARE(objects2.at(1)->objectForKey("totalPlayers").toInt(), 18);
 	QCOMPARE(objects2.at(2)->objectForKey("totalPlayers").toInt(), 10);
+}
+
+void TestPFQuery::test_setLimit()
+{
+	// Query for sports but set the limit to 0
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	query->setLimit(0);
+	PFObjectList objects = query->findObjects();
+	QCOMPARE(objects.count(), 0);
+
+	// Query for sports but set the limit to 2
+	query = PFQuery::queryWithClassName("Sport");
+	query->setLimit(2);
+	objects = query->findObjects();
+	QCOMPARE(objects.count(), 2);
+}
+
+void TestPFQuery::test_limit()
+{
+	// Try some different combos (simple b/c it is only a getter)
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	QCOMPARE(query->limit(), -1);
+	query->setLimit(0);
+	QCOMPARE(query->limit(), 0);
+	query->setLimit(2);
+	QCOMPARE(query->limit(), 2);
+}
+
+void TestPFQuery::test_setSkip()
+{
+	// Query for sports but skip the first 2
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	query->setSkip(2);
+	PFObjectList objects = query->findObjects();
+	QCOMPARE(objects.count(), 1);
+
+	// Query for officials but skip the first 3
+	query = PFQuery::queryWithClassName("Official");
+	query->setSkip(3);
+	objects = query->findObjects();
+	QCOMPARE(objects.count(), 0);
+}
+
+void TestPFQuery::test_skip()
+{
+	// Try some different combos (simple b/c it is only a getter)
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	QCOMPARE(query->skip(), -1);
+	query->setSkip(0);
+	QCOMPARE(query->skip(), 0);
+	query->setSkip(2);
+	QCOMPARE(query->skip(), 2);
 }
 
 void TestPFQuery::test_getObjectOfClassWithId()
