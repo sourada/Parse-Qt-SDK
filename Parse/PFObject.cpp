@@ -8,6 +8,7 @@
 
 // Parse headers
 #include "PFACL.h"
+#include "PFConversion.h"
 #include "PFDateTime.h"
 #include "PFError.h"
 #include "PFFile.h"
@@ -23,34 +24,6 @@
 #include <QVariant>
 
 namespace parse {
-
-#pragma mark - Private Helper Conversion Methods
-
-namespace PFObjectHelpers {
-
-bool areEqual(const QVariant& variant1, const QVariant& variant2)
-{
-	// Compare the JSON values if we have serializables
-	PFSerializablePtr serializable1 = variant1.value<PFSerializablePtr>();
-	PFSerializablePtr serializable2 = variant2.value<PFSerializablePtr>();
-	if (!serializable1.isNull() && !serializable2.isNull())
-	{
-		// Make sure that they're the same class before converting to JSON
-		if (serializable1->pfClassName() == serializable2->pfClassName())
-		{
-			QJsonObject jsonVariant1, jsonVariant2;
-			serializable1->toJson(jsonVariant1);
-			serializable2->toJson(jsonVariant2);
-			QByteArray json1 = QJsonDocument(jsonVariant1).toJson();
-			QByteArray json2 = QJsonDocument(jsonVariant2).toJson();
-			return (json1 == json2);
-		}
-	}
-
-	return false;
-}
-
-}	// End of PFObjectHelpers namespace
 
 // Static Globals
 static QHash<PFObject *, PFObjectList> gActiveBackgroundObjects; // Used for save all, delete all and fetch all
@@ -317,12 +290,7 @@ void PFObject::addUniqueObjectsToListForKey(const QVariantList& objects, const Q
 			{
 				foreach (const QVariant& existingObject, propertyList)
 				{
-					if (existingObject == objectToAdd)
-					{
-						uniqueObjects.removeOne(existingObject);
-						break;
-					}
-					else if (PFObjectHelpers::areEqual(existingObject, objectToAdd))
+					if (PFConversion::areEqual(existingObject, objectToAdd))
 					{
 						uniqueObjects.removeOne(objectToAdd);
 						break;
@@ -381,12 +349,7 @@ void PFObject::removeObjectsFromListForKey(const QVariantList& objects, const QS
 		{
 			foreach (const QVariant& currentObject, currentObjects)
 			{
-				if (currentObject == objectToRemove)
-				{
-					matchedObjects.append(currentObject);
-					break;
-				}
-				else if (PFObjectHelpers::areEqual(currentObject, objectToRemove))
+				if (PFConversion::areEqual(currentObject, objectToRemove))
 				{
 					matchedObjects.append(currentObject);
 					break;
@@ -981,7 +944,7 @@ QVariant PFObject::fromJson(const QJsonObject& jsonObject)
 	duplicateJsonObject.remove("objectId");
 
 	// Convert the entire json object into a properties variant map and strip out the instance members
-	object->_properties = object->convertJsonToVariant(duplicateJsonObject).toMap();
+	object->_properties = PFConversion::convertJsonToVariant(duplicateJsonObject).toMap();
 	object->stripInstanceMembersFromProperties();
 
 	return toVariant(object);
@@ -1175,7 +1138,7 @@ void PFObject::createSaveNetworkRequest(QNetworkRequest& request, QByteArray& da
 	foreach (const QString& key, objectsToSerialize.keys())
 	{
 		QVariant objectToSerialize = objectsToSerialize[key];
-		jsonObject[key] = convertDataToJson(objectToSerialize);
+		jsonObject[key] = PFConversion::convertVariantToJson(objectToSerialize);
 	}
 	data = QJsonDocument(jsonObject).toJson(QJsonDocument::Compact);
 }
@@ -1209,7 +1172,7 @@ void PFObject::createSaveAllNetworkRequest(PFObjectList objects, QNetworkRequest
 		foreach (const QString& key, objectsToSerialize.keys())
 		{
 			QVariant objectToSerialize = objectsToSerialize[key];
-			jsonObjectBody[key] = object->convertDataToJson(objectToSerialize);
+			jsonObjectBody[key] = PFConversion::convertVariantToJson(objectToSerialize);
 		}
 
 		// Create the json request
@@ -1488,7 +1451,7 @@ bool PFObject::deserializeFetchNetworkReply(QNetworkReply* networkReply, PFError
 	if (networkReply->error() == QNetworkReply::NoError) // SUCCESS
 	{
 		// Deserialize the json into our properties variant map and strip out the instance members
-		_properties = convertJsonToVariant(jsonObject).toMap();
+		_properties = PFConversion::convertJsonToVariant(jsonObject).toMap();
 		stripInstanceMembersFromProperties();
 
 		return true;
@@ -1503,120 +1466,7 @@ bool PFObject::deserializeFetchNetworkReply(QNetworkReply* networkReply, PFError
 	}
 }
 
-#pragma mark - Recursive JSON Conversion Helper Methods
-
-QJsonValue PFObject::convertDataToJson(const QVariant& data)
-{
-	if ((QMetaType::Type) data.type() == QMetaType::QVariantList)
-	{
-		QJsonArray jsonArray;
-		foreach (const QVariant& dataObject, data.toList())
-		{
-			QJsonValue jsonValue = convertDataToJson(dataObject);
-			jsonArray.append(jsonValue);
-		}
-
-		return QJsonValue(jsonArray);
-	}
-	else if ((QMetaType::Type) data.type() == QMetaType::QVariantMap)
-	{
-		QJsonObject jsonObject;
-		QVariantMap dataMap = data.toMap();
-		foreach (const QString& key, dataMap.keys())
-		{
-			QVariant dataObject = dataMap[key];
-			jsonObject[key] = convertDataToJson(dataObject);
-		}
-
-		return QJsonValue(jsonObject);
-	}
-	else if ((QMetaType::Type) data.type() == QMetaType::QVariantHash)
-	{
-		QJsonObject jsonObject;
-		QVariantHash dataHash;
-		foreach (const QString& key, dataHash.keys())
-		{
-			QVariant dataObject = dataHash[key];
-			jsonObject[key] = convertDataToJson(dataObject);
-		}
-
-		return QJsonValue(jsonObject);
-	}
-	else if (data.canConvert<PFSerializablePtr>())	// PFSerializablePtr
-	{
-		PFSerializablePtr serializable = data.value<PFSerializablePtr>();
-		QJsonObject jsonObject;
-		serializable->toJson(jsonObject);
-		return QJsonValue(jsonObject);
-	}
-	else
-	{
-		return QJsonValue::fromVariant(data);
-	}
-}
-
-QVariant PFObject::convertJsonToVariant(const QJsonValue& jsonValue)
-{
-	if (jsonValue.type() == QJsonValue::Array)
-	{
-		QVariantList variantList;
-		QJsonArray jsonArray = jsonValue.toArray();
-		foreach (const QJsonValue& arrayJsonValue, jsonArray)
-		{
-			QVariant arrayVariant = convertJsonToVariant(arrayJsonValue);
-			variantList.append(arrayVariant);
-		}
-
-		return variantList;
-	}
-	else if (jsonValue.type() == QJsonValue::Object)
-	{
-		QJsonObject jsonObject = jsonValue.toObject();
-		if (jsonObject.contains("__type")) // Some PF* class
-		{
-			QString objectType = jsonObject["__type"].toString();
-			if (objectType == "Date")
-			{
-				return PFDateTime::fromJson(jsonObject);
-			}
-			else if (objectType == "File")
-			{
-				return PFFile::fromJson(jsonObject);
-			}
-			else if (objectType == "Pointer")
-			{
-				QString className = jsonObject["className"].toString();
-				if (className == "_User")
-				{
-					return PFUser::fromJson(jsonObject);
-				}
-				else
-				{
-					return PFObject::fromJson(jsonObject);
-				}
-			}
-			else
-			{
-				return QVariant();
-			}
-		}
-		else // Contains a map of stuff so recursively convert it some more
-		{
-			QVariantMap variantMap;
-			foreach (const QString& jsonKey, jsonObject.keys())
-			{
-				QJsonValue dictionaryJsonValue = jsonObject[jsonKey];
-				variantMap[jsonKey] = convertJsonToVariant(dictionaryJsonValue);
-			}
-
-			return variantMap;
-		}
-	}
-	else
-	{
-		return jsonValue.toVariant();
-	}
-}
+#pragma mark - Instance Member Property Stripping Methods
 
 void PFObject::stripInstanceMembersFromProperties()
 {

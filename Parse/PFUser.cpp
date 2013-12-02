@@ -7,6 +7,7 @@
 //
 
 // Parse headers
+#include "PFConversion.h"
 #include "PFDateTime.h"
 #include "PFError.h"
 #include "PFManager.h"
@@ -444,7 +445,7 @@ void PFUser::createSignUpNetworkRequest(QNetworkRequest& request, QByteArray& da
 	foreach (const QString& key, _properties.keys())
 	{
 		QVariant objectToSerialize = _properties[key];
-		jsonObject[key] = convertDataToJson(objectToSerialize);
+		jsonObject[key] = PFConversion::convertVariantToJson(objectToSerialize);
 	}
 
 	// Add the keys not tracked in the child objects
@@ -577,7 +578,7 @@ bool PFUser::deserializeLogInNetworkReply(QNetworkReply* networkReply, PFErrorPt
 	if (networkReply->error() == QNetworkReply::NoError) // SUCCESS
 	{
 		// Deserialize the json into our properties variant map and strip out the instance members
-		_properties = convertJsonToVariant(jsonObject).toMap();
+		_properties = PFConversion::convertJsonToVariant(jsonObject).toMap();
 		stripInstanceMembersFromProperties();
 
 		return true;

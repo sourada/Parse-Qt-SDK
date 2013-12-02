@@ -159,9 +159,7 @@ protected:
 	bool deserializeDeleteAllObjectsNetworkReply(PFObjectList objects, QNetworkReply* networkReply, PFErrorPtr& error);
 	virtual bool deserializeFetchNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 
-	// Recursive JSON Conversion Helper Methods
-	QJsonValue convertDataToJson(const QVariant& data);
-	QVariant convertJsonToVariant(const QJsonValue& jsonValue);
+	// Strips the instance members from the properties after recursive fetching
 	virtual void stripInstanceMembersFromProperties();
 
 	// Instance members
