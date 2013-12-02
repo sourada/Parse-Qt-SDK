@@ -32,6 +32,13 @@ public slots:
 		emit findObjectsEnded();
 	}
 
+	void getFirstObjectCompleted(PFObjectPtr object, PFErrorPtr error)
+	{
+		_getFirstObject = object;
+		_getFirstObjectError = error;
+		emit getFirstObjectEnded();
+	}
+
 	void countObjectsCompleted(int count, PFErrorPtr error)
 	{
 		_objectCount = count;
@@ -43,6 +50,7 @@ signals:
 
 	void getObjectEnded();
 	void findObjectsEnded();
+	void getFirstObjectEnded();
 	void countObjectsEnded();
 
 private slots:
@@ -147,6 +155,11 @@ private slots:
 	void test_findObjectsWithError();
 	void test_findObjectsInBackground();
 
+	// Get First Object Methods
+	void test_getFirstObject();
+	void test_getFirstObjectWithError();
+	void test_getFirstObjectInBackground();
+
 	// Count Objects Methods
 	void test_countObjects();
 	void test_countObjectsWithError();
@@ -167,6 +180,8 @@ private:
 	PFErrorPtr		_getObjectError;
 	PFObjectList	_findObjects;
 	PFErrorPtr		_findObjectsError;
+	PFObjectPtr		_getFirstObject;
+	PFErrorPtr		_getFirstObjectError;
 	int				_objectCount;
 	PFErrorPtr		_objectCountError;
 };
@@ -697,6 +712,80 @@ void TestPFQuery::test_findObjectsInBackground()
 	QCOMPARE(basketball->objectForKey("totalPlayers").toInt(), 10);
 }
 
+void TestPFQuery::test_getFirstObject()
+{
+	// Get the first sport
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	PFObjectPtr sport = query->getFirstObject();
+	QCOMPARE(sport.isNull(), false);
+	QCOMPARE(sport->objectId().isEmpty(), false);
+	QCOMPARE(sport->className(), QString("Sport"));
+	QCOMPARE(sport->objectForKey("timeSegment").toString().isEmpty(), false);
+
+	// Get the first official
+	query = PFQuery::queryWithClassName("Official");
+	PFObjectPtr official = query->getFirstObject();
+	QCOMPARE(official.isNull(), false);
+	QCOMPARE(official->objectId().isEmpty(), false);
+	QCOMPARE(official->className(), QString("Official"));
+	QCOMPARE(official->objectForKey("sport").toString().isEmpty(), false);
+}
+
+void TestPFQuery::test_getFirstObjectWithError()
+{
+	// Get the first sport
+	PFErrorPtr queryError;
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	PFObjectPtr sport = query->getFirstObject(queryError);
+	QCOMPARE(sport.isNull(), false);
+	QCOMPARE(queryError.isNull(), true);
+	QCOMPARE(sport->objectId().isEmpty(), false);
+	QCOMPARE(sport->className(), QString("Sport"));
+	QCOMPARE(sport->objectForKey("timeSegment").toString().isEmpty(), false);
+
+	// Get the first official
+	query = PFQuery::queryWithClassName("Official");
+	PFObjectPtr official = query->getFirstObject(queryError);
+	QCOMPARE(official.isNull(), false);
+	QCOMPARE(queryError.isNull(), true);
+	QCOMPARE(official->objectId().isEmpty(), false);
+	QCOMPARE(official->className(), QString("Official"));
+	QCOMPARE(official->objectForKey("sport").toString().isEmpty(), false);
+}
+
+void TestPFQuery::test_getFirstObjectInBackground()
+{
+	// Use an event loop to block until we receive the completion
+	QEventLoop eventLoop;
+	QObject::connect(this, SIGNAL(getFirstObjectEnded()), &eventLoop, SLOT(quit()));
+
+	// Get the first sport
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	query->getFirstObjectInBackground(this, SLOT(getFirstObjectCompleted(PFObjectPtr, PFErrorPtr)));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	PFObjectPtr sport = _getFirstObject;
+	QCOMPARE(sport.isNull(), false);
+	QCOMPARE(_getFirstObjectError.isNull(), true);
+	QCOMPARE(sport->objectId().isEmpty(), false);
+	QCOMPARE(sport->className(), QString("Sport"));
+	QCOMPARE(sport->objectForKey("timeSegment").toString().isEmpty(), false);
+
+	// Reset callback flags
+	_getFirstObject = PFObjectPtr();
+	_getFirstObjectError = PFErrorPtr();
+
+	// Get the first official
+	query = PFQuery::queryWithClassName("Official");
+	query->getFirstObjectInBackground(this, SLOT(getFirstObjectCompleted(PFObjectPtr, PFErrorPtr)));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	PFObjectPtr official = _getFirstObject;
+	QCOMPARE(official.isNull(), false);
+	QCOMPARE(_getFirstObjectError.isNull(), true);
+	QCOMPARE(official->objectId().isEmpty(), false);
+	QCOMPARE(official->className(), QString("Official"));
+	QCOMPARE(official->objectForKey("sport").toString().isEmpty(), false);
+}
+
 void TestPFQuery::test_countObjects()
 {
 	// Simple count query
@@ -764,12 +853,17 @@ void TestPFQuery::test_cancel()
 
 	// Start up a background get object query and cancel it.
 	query = PFQuery::queryWithClassName("Official");
-	query->getObjectWithIdInBackground("", this, SLOT(findObjectsCompleted(PFObjectList, PFErrorPtr)));
+	query->getObjectWithIdInBackground("", this, SLOT(getObjectCompleted(PFObjectPtr, PFErrorPtr)));
 	query->cancel();
 
 	// Start up a background find query and cancel it.
-	query = PFQuery::queryWithClassName("Official");
+	query = PFQuery::queryWithClassName("Sport");
 	query->findObjectsInBackground(this, SLOT(findObjectsCompleted(PFObjectList, PFErrorPtr)));
+	query->cancel();
+
+	// Start up a background get first object query and cancel it.
+	query = PFQuery::queryWithClassName("Official");
+	query->getFirstObjectInBackground(this, SLOT(getFirstObjectCompleted(PFObjectPtr, PFErrorPtr)));
 	query->cancel();
 
 	// Start up a background count query and cancel it.

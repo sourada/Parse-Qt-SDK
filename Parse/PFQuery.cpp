@@ -34,6 +34,7 @@ PFQuery::PFQuery()
 	_skip = -1;
 	_getObjectReply = NULL;
 	_findReply = NULL;
+	_getFirstObjectReply = NULL;
 	_countReply = NULL;
 }
 
@@ -233,6 +234,51 @@ void PFQuery::findObjectsInBackground(QObject* findCompleteTarget, const char* f
 	QObject::connect(this, SIGNAL(findObjectsCompleted(PFObjectList, PFErrorPtr)), findCompleteTarget, findCompleteAction);
 }
 
+#pragma mark - Get First Object Methods
+
+PFObjectPtr PFQuery::getFirstObject()
+{
+	PFErrorPtr error;
+	return getFirstObject(error);
+}
+
+PFObjectPtr PFQuery::getFirstObject(PFErrorPtr& error)
+{
+	// Prep the request and data
+	QNetworkRequest networkRequest = createGetFirstObjectNetworkRequest();
+
+	// Execute the request and connect the callbacks
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	QNetworkReply* networkReply = networkAccessManager->get(networkRequest);
+
+	// Block the async nature of the request using our own event loop until the reply finishes
+	QEventLoop eventLoop;
+	QObject::connect(networkReply, SIGNAL(finished()), &eventLoop, SLOT(quit()));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+
+	// Deserialize the reply
+	PFObjectPtr object = deserializeGetFirstObjectNetworkReply(networkReply, error);
+
+	// Clean up
+	networkReply->deleteLater();
+
+	return object;
+}
+
+void PFQuery::getFirstObjectInBackground(QObject* getCompleteTarget, const char* getCompleteAction)
+{
+	// Prep the request and data
+	QNetworkRequest networkRequest = createFindObjectsNetworkRequest();
+
+	// Execute the request
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	_getFirstObjectReply = networkAccessManager->get(networkRequest);
+
+	// Connect all the callbacks
+	QObject::connect(_getFirstObjectReply, SIGNAL(finished()), this, SLOT(handleGetFirstObjectCompleted()));
+	QObject::connect(this, SIGNAL(getFirstObjectCompleted(PFObjectPtr, PFErrorPtr)), getCompleteTarget, getCompleteAction);
+}
+
 #pragma mark - Count Objects Methods
 
 int PFQuery::countObjects()
@@ -300,6 +346,15 @@ void PFQuery::cancel()
 		_findReply->deleteLater();
 	}
 
+	if (_getFirstObjectReply)
+	{
+		qDebug() << "Cancelling PFQuery get first object operation";
+		disconnect(SIGNAL(getFirstObjectCompleted(PFObjectPtr, PFErrorPtr)));
+		_getFirstObjectReply->disconnect();
+		_getFirstObjectReply->abort();
+		_getFirstObjectReply->deleteLater();
+	}
+
 	if (_countReply)
 	{
 		qDebug() << "Cancelling PFQuery count objects operation";
@@ -351,6 +406,23 @@ void PFQuery::handleFindObjectsCompleted()
 
 	// Clean up
 	_findReply->deleteLater();
+}
+
+void PFQuery::handleGetFirstObjectCompleted()
+{
+	// Disconnect the get first object reply from this instance
+	_getFirstObjectReply->disconnect(this);
+
+	// Deserialize the reply
+	PFErrorPtr error;
+	PFObjectPtr object = deserializeGetFirstObjectNetworkReply(_getFirstObjectReply, error);
+
+	// Emit the signal that the request completed and then disconnect it
+	emit getFirstObjectCompleted(object, error);
+	this->disconnect(SIGNAL(getFirstObjectCompleted(PFObjectPtr, PFErrorPtr)));
+
+	// Clean up
+	_getFirstObjectReply->deleteLater();
 }
 
 void PFQuery::handleCountObjectsCompleted()
@@ -452,6 +524,15 @@ QNetworkRequest PFQuery::createFindObjectsNetworkRequest()
 	return request;
 }
 
+QNetworkRequest PFQuery::createGetFirstObjectNetworkRequest()
+{
+	// Force the limit to 1
+	_limit = 1;
+
+	// Use the find objects network request method since they're the same
+	return createFindObjectsNetworkRequest();
+}
+
 QNetworkRequest PFQuery::createCountObjectsNetworkRequest()
 {
 	// Create the url
@@ -546,6 +627,12 @@ PFObjectList PFQuery::deserializeFindObjectsNetworkReply(QNetworkReply* networkR
 	}
 
 	return objects;
+}
+
+PFObjectPtr PFQuery::deserializeGetFirstObjectNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error)
+{
+	// Use the get object deserialization since it's exactly the same
+	return deserializeGetObjectNetworkReply(networkReply, error);
 }
 
 int PFQuery::deserializeCountObjectsNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error)

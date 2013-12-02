@@ -59,6 +59,11 @@ public:
 	PFObjectList findObjects(PFErrorPtr& error);
 	void findObjectsInBackground(QObject* findCompleteTarget, const char* findCompleteAction);
 
+	// Get First Object Methods - getCompleteAction signature: (PFObjectPtr object, PFErrorPtr error)
+	PFObjectPtr getFirstObject();
+	PFObjectPtr getFirstObject(PFErrorPtr& error);
+	void getFirstObjectInBackground(QObject* getCompleteTarget, const char* getCompleteAction);
+
 	// Count Objects Methods - countCompleteAction signature: (int count, PFErrorPtr error)
 	int countObjects();
 	int countObjects(PFErrorPtr& error);
@@ -79,6 +84,7 @@ protected slots:
 	// Background Network Reply Completion Slots
 	void handleGetObjectCompleted();
 	void handleFindObjectsCompleted();
+	void handleGetFirstObjectCompleted();
 	void handleCountObjectsCompleted();
 
 signals:
@@ -86,6 +92,7 @@ signals:
 	// Background Request Completion Signals
 	void getObjectCompleted(PFObjectPtr object, PFErrorPtr error);
 	void findObjectsCompleted(PFObjectList objects, PFErrorPtr error);
+	void getFirstObjectCompleted(PFObjectPtr object, PFErrorPtr error);
 	void countObjectsCompleted(int count, PFErrorPtr error);
 
 protected:
@@ -97,11 +104,13 @@ protected:
 	// Network Request Builder Methods
 	QNetworkRequest createGetObjectNetworkRequest();
 	QNetworkRequest createFindObjectsNetworkRequest();
+	QNetworkRequest createGetFirstObjectNetworkRequest();
 	QNetworkRequest createCountObjectsNetworkRequest();
 
 	// Network Reply Deserialization Methods
 	PFObjectPtr deserializeGetObjectNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 	PFObjectList deserializeFindObjectsNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
+	PFObjectPtr deserializeGetFirstObjectNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 	int deserializeCountObjectsNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 
 	// Key Helper Methods
@@ -117,6 +126,7 @@ protected:
 	int				_skip;
 	QNetworkReply*	_getObjectReply;
 	QNetworkReply*	_findReply;
+	QNetworkReply*	_getFirstObjectReply;
 	QNetworkReply*	_countReply;
 };
 
