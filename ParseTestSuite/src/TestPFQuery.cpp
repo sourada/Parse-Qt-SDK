@@ -137,6 +137,9 @@ private slots:
 	void test_findObjectsWithError();
 	void test_findObjectsInBackground();
 
+	// Cancel Methods
+	void test_cancel();
+
 	// Accessor Methods
 	void test_className();
 
@@ -675,6 +678,21 @@ void TestPFQuery::test_findObjectsInBackground()
 	QCOMPARE(basketball->objectForKey("name").toString(), QString("Basketball"));
 	QCOMPARE(basketball->objectForKey("timeSegment").toString(), QString("Period"));
 	QCOMPARE(basketball->objectForKey("totalPlayers").toInt(), 10);
+}
+
+void TestPFQuery::test_cancel()
+{
+	// Create a query and cancel it (should just return)
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	query->cancel();
+
+	// Start up a background query and cancel it.
+	// NOTE: There's nothing to actually test here since we have a void return type. The only way
+	// to make sure this is working properly is to look at the debug output and verify the operation
+	// was actually cancelled.
+	query = PFQuery::queryWithClassName("Official");
+	query->findObjectsInBackground(this, SLOT(findObjectsCompleted(PFObjectList, PFErrorPtr)));
+	query->cancel();
 }
 
 void TestPFQuery::test_className()

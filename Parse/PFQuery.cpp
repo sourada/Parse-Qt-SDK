@@ -32,6 +32,7 @@ PFQuery::PFQuery()
 	// Set ivar defaults
 	_limit = -1;
 	_skip = -1;
+	_findReply = NULL;
 }
 
 PFQuery::~PFQuery()
@@ -223,11 +224,25 @@ void PFQuery::findObjectsInBackground(QObject* findCompleteTarget, const char* f
 
 	// Execute the request
 	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
-	networkAccessManager->get(networkRequest);
+	_findReply = networkAccessManager->get(networkRequest);
 
 	// Connect all the callbacks
-	QObject::connect(networkAccessManager, SIGNAL(finished(QNetworkReply*)), this, SLOT(handleFindObjectsCompleted(QNetworkReply*)));
+	QObject::connect(_findReply, SIGNAL(finished()), this, SLOT(handleFindObjectsCompleted()));
 	QObject::connect(this, SIGNAL(findObjectsCompleted(PFObjectList, PFErrorPtr)), findCompleteTarget, findCompleteAction);
+}
+
+#pragma mark - Cancel Methods
+
+void PFQuery::cancel()
+{
+	if (_findReply)
+	{
+		qDebug() << "Cancelling PFQuery find objects operation";
+		disconnect(SIGNAL(findObjectsCompleted(PFObjectList, PFErrorPtr)));
+		_findReply->disconnect();
+		_findReply->abort();
+		_findReply->deleteLater();
+	}
 }
 
 #pragma mark - Accessor Methods
@@ -257,22 +272,21 @@ void PFQuery::handleGetObjectCompleted(QNetworkReply* networkReply)
 	networkReply->deleteLater();
 }
 
-void PFQuery::handleFindObjectsCompleted(QNetworkReply* networkReply)
+void PFQuery::handleFindObjectsCompleted()
 {
-	// Disconnect the network access manager as well as all the connected signals to this instance
-	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
-	networkAccessManager->disconnect(this);
+	// Disconnect the find reply from this instance
+	_findReply->disconnect(this);
 
 	// Deserialize the reply
 	PFErrorPtr error;
-	const PFObjectList& objects = deserializeFindObjectsNetworkReply(networkReply, error);
+	const PFObjectList& objects = deserializeFindObjectsNetworkReply(_findReply, error);
 
 	// Emit the signal that the request completed and then disconnect it
 	emit findObjectsCompleted(objects, error);
 	this->disconnect(SIGNAL(findObjectsCompleted(PFObjectList, PFErrorPtr)));
 
 	// Clean up
-	networkReply->deleteLater();
+	_findReply->deleteLater();
 }
 
 #pragma mark - Network Request Builder Methods

@@ -59,6 +59,9 @@ public:
 	PFObjectList findObjects(PFErrorPtr& error);
 	void findObjectsInBackground(QObject* findCompleteTarget, const char* findCompleteAction);
 
+	// Cancel Methods
+	void cancel();
+
 	// Accessor Methods
 	const QString& className();
 
@@ -70,7 +73,7 @@ protected slots:
 
 	// Background Network Reply Completion Slots
 	void handleGetObjectCompleted(QNetworkReply* networkReply);
-	void handleFindObjectsCompleted(QNetworkReply* networkReply);
+	void handleFindObjectsCompleted();
 
 signals:
 
@@ -103,6 +106,7 @@ protected:
 	QStringList		_orderKeys;
 	int				_limit;
 	int				_skip;
+	QNetworkReply*	_findReply;
 };
 
 }	// End of parse namespace
