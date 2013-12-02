@@ -59,6 +59,11 @@ public:
 	PFObjectList findObjects(PFErrorPtr& error);
 	void findObjectsInBackground(QObject* findCompleteTarget, const char* findCompleteAction);
 
+	// Count Objects Methods - countCompleteAction signature: (int count, PFErrorPtr error)
+	int countObjects();
+	int countObjects(PFErrorPtr& error);
+	void countObjectsInBackground(QObject* countCompleteTarget, const char* countCompleteAction);
+
 	// Cancel Methods
 	void cancel();
 
@@ -74,12 +79,14 @@ protected slots:
 	// Background Network Reply Completion Slots
 	void handleGetObjectCompleted(QNetworkReply* networkReply);
 	void handleFindObjectsCompleted();
+	void handleCountObjectsCompleted();
 
 signals:
 
 	// Background Request Completion Signals
 	void getObjectCompleted(PFObjectPtr object, PFErrorPtr error);
 	void findObjectsCompleted(PFObjectList objects, PFErrorPtr error);
+	void countObjectsCompleted(int count, PFErrorPtr error);
 
 protected:
 
@@ -90,10 +97,12 @@ protected:
 	// Network Request Builder Methods
 	QNetworkRequest createGetObjectNetworkRequest();
 	QNetworkRequest createFindObjectsNetworkRequest();
+	QNetworkRequest createCountObjectsNetworkRequest();
 
 	// Network Reply Deserialization Methods
 	PFObjectPtr deserializeGetObjectNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 	PFObjectList deserializeFindObjectsNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
+	int deserializeCountObjectsNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 
 	// Key Helper Methods
 	void addWhereOption(const QString& key, const QString& option, const QVariant& object);
@@ -107,6 +116,7 @@ protected:
 	int				_limit;
 	int				_skip;
 	QNetworkReply*	_findReply;
+	QNetworkReply*	_countReply;
 };
 
 }	// End of parse namespace

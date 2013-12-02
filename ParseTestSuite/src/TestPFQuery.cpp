@@ -32,10 +32,18 @@ public slots:
 		emit findObjectsEnded();
 	}
 
+	void countObjectsCompleted(int count, PFErrorPtr error)
+	{
+		_objectCount = count;
+		_objectCountError = error;
+		emit countObjectsEnded();
+	}
+
 signals:
 
 	void getObjectEnded();
 	void findObjectsEnded();
+	void countObjectsEnded();
 
 private slots:
 
@@ -104,6 +112,8 @@ private slots:
 		_getObjectError = PFErrorPtr();
 		_findObjects.clear();
 		_findObjectsError = PFErrorPtr();
+		_objectCount = -1;
+		_objectCountError = PFErrorPtr();
 	}
 
 	// Creation Methods
@@ -137,6 +147,11 @@ private slots:
 	void test_findObjectsWithError();
 	void test_findObjectsInBackground();
 
+	// Count Objects Methods
+	void test_countObjects();
+	void test_countObjectsWithError();
+	void test_countObjectsInBackground();
+
 	// Cancel Methods
 	void test_cancel();
 
@@ -152,6 +167,8 @@ private:
 	PFErrorPtr		_getObjectError;
 	PFObjectList	_findObjects;
 	PFErrorPtr		_findObjectsError;
+	int				_objectCount;
+	PFErrorPtr		_objectCountError;
 };
 
 void TestPFQuery::test_queryWithClassName()
@@ -680,18 +697,82 @@ void TestPFQuery::test_findObjectsInBackground()
 	QCOMPARE(basketball->objectForKey("totalPlayers").toInt(), 10);
 }
 
+void TestPFQuery::test_countObjects()
+{
+	// Simple count query
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	QCOMPARE(query->countObjects(), 3);
+
+	// More complex query
+	query = PFQuery::queryWithClassName("Official");
+	query->whereKeyNotEqualTo("name", QString("Umpire"));
+	query->whereKeyNotEqualTo("sport", QString("Football"));
+	query->orderByAscending("name");
+	QCOMPARE(query->countObjects(), 1);
+}
+
+void TestPFQuery::test_countObjectsWithError()
+{
+	// Simple count query
+	PFErrorPtr queryError;
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	QCOMPARE(query->countObjects(queryError), 3);
+	QCOMPARE(queryError.isNull(), true);
+
+	// More complex query
+	query = PFQuery::queryWithClassName("Official");
+	query->whereKeyNotEqualTo("name", QString("Umpire"));
+	query->whereKeyNotEqualTo("sport", QString("Football"));
+	query->orderByAscending("name");
+	QCOMPARE(query->countObjects(queryError), 1);
+	QCOMPARE(queryError.isNull(), true);
+}
+
+void TestPFQuery::test_countObjectsInBackground()
+{
+	// Use an event loop to block until we receive the completion
+	QEventLoop eventLoop;
+	QObject::connect(this, SIGNAL(countObjectsEnded()), &eventLoop, SLOT(quit()));
+
+	// Simple count query
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	query->countObjectsInBackground(this, SLOT(countObjectsCompleted(int, PFErrorPtr)));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_objectCount, 3);
+	QCOMPARE(_objectCountError.isNull(), true);
+
+	// Reset callback flags
+	_objectCount = -1;
+	_objectCountError = PFErrorPtr();
+
+	// More complex query
+	query = PFQuery::queryWithClassName("Official");
+	query->whereKeyNotEqualTo("name", QString("Umpire"));
+	query->whereKeyNotEqualTo("sport", QString("Football"));
+	query->orderByAscending("name");
+	query->countObjectsInBackground(this, SLOT(countObjectsCompleted(int, PFErrorPtr)));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_objectCount, 1);
+	QCOMPARE(_objectCountError.isNull(), true);
+}
+
 void TestPFQuery::test_cancel()
 {
 	// Create a query and cancel it (should just return)
 	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
 	query->cancel();
 
-	// Start up a background query and cancel it.
+	// Start up a background find query and cancel it.
 	// NOTE: There's nothing to actually test here since we have a void return type. The only way
 	// to make sure this is working properly is to look at the debug output and verify the operation
 	// was actually cancelled.
 	query = PFQuery::queryWithClassName("Official");
 	query->findObjectsInBackground(this, SLOT(findObjectsCompleted(PFObjectList, PFErrorPtr)));
+	query->cancel();
+
+	// Start up a background count query and cancel it.
+	query = PFQuery::queryWithClassName("Sport");
+	query->countObjectsInBackground(this, SLOT(countObjectsCompleted(int, PFErrorPtr)));
 	query->cancel();
 }
 

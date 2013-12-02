@@ -33,6 +33,7 @@ PFQuery::PFQuery()
 	_limit = -1;
 	_skip = -1;
 	_findReply = NULL;
+	_countReply = NULL;
 }
 
 PFQuery::~PFQuery()
@@ -231,6 +232,51 @@ void PFQuery::findObjectsInBackground(QObject* findCompleteTarget, const char* f
 	QObject::connect(this, SIGNAL(findObjectsCompleted(PFObjectList, PFErrorPtr)), findCompleteTarget, findCompleteAction);
 }
 
+#pragma mark - Count Objects Methods
+
+int PFQuery::countObjects()
+{
+	PFErrorPtr error;
+	return countObjects(error);
+}
+
+int PFQuery::countObjects(PFErrorPtr& error)
+{
+	// Prep the request and data
+	QNetworkRequest networkRequest = createCountObjectsNetworkRequest();
+
+	// Execute the request and connect the callbacks
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	QNetworkReply* networkReply = networkAccessManager->get(networkRequest);
+
+	// Block the async nature of the request using our own event loop until the reply finishes
+	QEventLoop eventLoop;
+	QObject::connect(networkReply, SIGNAL(finished()), &eventLoop, SLOT(quit()));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+
+	// Deserialize the reply
+	int count = deserializeCountObjectsNetworkReply(networkReply, error);
+
+	// Clean up
+	networkReply->deleteLater();
+
+	return count;
+}
+
+void PFQuery::countObjectsInBackground(QObject* countCompleteTarget, const char* countCompleteAction)
+{
+	// Prep the request and data
+	QNetworkRequest networkRequest = createCountObjectsNetworkRequest();
+
+	// Execute the request
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	_countReply = networkAccessManager->get(networkRequest);
+
+	// Connect all the callbacks
+	QObject::connect(_countReply, SIGNAL(finished()), this, SLOT(handleCountObjectsCompleted()));
+	QObject::connect(this, SIGNAL(countObjectsCompleted(int, PFErrorPtr)), countCompleteTarget, countCompleteAction);
+}
+
 #pragma mark - Cancel Methods
 
 void PFQuery::cancel()
@@ -242,6 +288,15 @@ void PFQuery::cancel()
 		_findReply->disconnect();
 		_findReply->abort();
 		_findReply->deleteLater();
+	}
+
+	if (_countReply)
+	{
+		qDebug() << "Cancelling PFQuery count objects operation";
+		disconnect(SIGNAL(countObjectsCompleted(int, PFErrorPtr)));
+		_countReply->disconnect();
+		_countReply->abort();
+		_countReply->deleteLater();
 	}
 }
 
@@ -287,6 +342,23 @@ void PFQuery::handleFindObjectsCompleted()
 
 	// Clean up
 	_findReply->deleteLater();
+}
+
+void PFQuery::handleCountObjectsCompleted()
+{
+	// Disconnect the count reply from this instance
+	_countReply->disconnect(this);
+
+	// Deserialize the reply
+	PFErrorPtr error;
+	int count = deserializeCountObjectsNetworkReply(_countReply, error);
+
+	// Emit the signal that the request completed and then disconnect it
+	emit countObjectsCompleted(count, error);
+	this->disconnect(SIGNAL(countObjectsCompleted(int, PFErrorPtr)));
+
+	// Clean up
+	_countReply->deleteLater();
 }
 
 #pragma mark - Network Request Builder Methods
@@ -371,6 +443,50 @@ QNetworkRequest PFQuery::createFindObjectsNetworkRequest()
 	return request;
 }
 
+QNetworkRequest PFQuery::createCountObjectsNetworkRequest()
+{
+	// Create the url
+	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _className);
+	QUrlQuery urlQuery;
+
+	// Attach the "where" query
+	if (!_whereMap.isEmpty())
+	{
+		QJsonObject whereJsonObject = PFConversion::convertVariantToJson(_whereMap).toObject();
+		QString whereJsonString = QString::fromUtf8(QJsonDocument(whereJsonObject).toJson(QJsonDocument::Compact));
+		urlQuery.addQueryItem("where", whereJsonString);
+	}
+
+	// Attach the "order" query
+	if (!_orderKeys.isEmpty())
+	{
+		QString orderString = _orderKeys.join(",");
+		urlQuery.addQueryItem("order", orderString);
+	}
+
+	// Attach the "limit" query - manually set this to 0 to guarantee we don't get any result objects back
+	urlQuery.addQueryItem("limit", "0");
+
+	// Attach the "count" query - has to be 1
+	urlQuery.addQueryItem("count", "1");
+
+	// Attach the url query to the url
+	url.setQuery(urlQuery);
+
+	// Create the request
+	QNetworkRequest request(url);
+
+	// Attach the necessary raw headers
+	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
+	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
+
+	// Attach the session token if we're authenticated as a particular user
+	if (PFUser::currentUser() && PFUser::currentUser()->isAuthenticated())
+		request.setRawHeader(QString("X-Parse-Session-Token").toUtf8(), PFUser::currentUser()->sessionToken().toUtf8());
+
+	return request;
+}
+
 #pragma mark - Network Reply Deserialization Methods
 
 PFObjectPtr PFQuery::deserializeGetObjectNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error)
@@ -421,6 +537,30 @@ PFObjectList PFQuery::deserializeFindObjectsNetworkReply(QNetworkReply* networkR
 	}
 
 	return objects;
+}
+
+int PFQuery::deserializeCountObjectsNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error)
+{
+	// Parse the json reply
+	int count = -1;
+	QJsonDocument doc = QJsonDocument::fromJson(networkReply->readAll());
+
+	// Extract the JSON payload
+	if (networkReply->error() == QNetworkReply::NoError) // SUCCESS
+	{
+		// Extract the count int
+		QJsonObject rootObject = doc.object();
+		count = rootObject["count"].toInt();
+	}
+	else // FAILURE
+	{
+		QJsonObject jsonObject = doc.object();
+		int errorCode = jsonObject["code"].toInt();
+		QString errorMessage = jsonObject["error"].toString();
+		error = PFError::errorWithCodeAndMessage(errorCode, errorMessage);
+	}
+
+	return count;
 }
 
 #pragma mark - Key Helper Methods
