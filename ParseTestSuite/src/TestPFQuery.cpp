@@ -6,8 +6,10 @@
 //  Copyright (c) 2013 Christian Noon. All rights reserved.
 //
 
+#include "PFError.h"
 #include "PFObject.h"
 #include "PFQuery.h"
+#include "PFUser.h"
 #include "TestRunner.h"
 
 using namespace parse;
@@ -149,6 +151,10 @@ private slots:
 	void test_getObjectWithId();
 	void test_getObjectWithIdWithError();
 	void test_getObjectWithIdInBackground();
+
+	// Get User Methods
+	void test_getUserWithId();
+	void test_getUserWithIdWithError();
 
 	// Find Objects Methods
 	void test_findObjects();
@@ -582,6 +588,63 @@ void TestPFQuery::test_getObjectWithIdInBackground()
 	QCOMPARE(umpire->objectId().isEmpty(), false);
 	QCOMPARE(umpire->objectForKey("name").toString(), QString("Umpire"));
 	QCOMPARE(umpire->objectForKey("sport").toString(), QString("Baseball"));
+}
+
+void TestPFQuery::test_getUserWithId()
+{
+	// Create a test user
+	PFUserPtr user = PFUser::user();
+	user->setUsername("test_getUserWithId");
+	user->setEmail("test_getUserWithId@parse.com");
+	user->setPassword("testPassword");
+	user->setObjectForKey(QString("123-456-7890"), "phone");
+	QCOMPARE(PFUser::signUpWithUser(user), true);
+	QCOMPARE(user->objectId().isEmpty(), false);
+
+	// Query for a user with a blank object id
+	PFUserPtr cloudUser = PFQuery::getUserWithId("");
+	QCOMPARE(cloudUser.isNull(), true);
+
+	// Query for the user using the object id
+	cloudUser = PFQuery::getUserWithId(user->objectId());
+	QCOMPARE(cloudUser.isNull(), false);
+	QCOMPARE(cloudUser->username(), user->username());
+	QCOMPARE(cloudUser->email(), user->email());
+	QCOMPARE(cloudUser->password().isEmpty(), true);
+	QCOMPARE(cloudUser->objectForKey("phone"), user->objectForKey("phone"));
+
+	// Cleanup
+	QCOMPARE(user->deleteObject(), true);
+}
+
+void TestPFQuery::test_getUserWithIdWithError()
+{
+	// Create a test user
+	PFUserPtr user = PFUser::user();
+	user->setUsername("test_getUserWithIdWithError");
+	user->setEmail("test_getUserWithIdWithError@parse.com");
+	user->setPassword("testPassword");
+	user->setObjectForKey(QString("123-456-7890"), "phone");
+	QCOMPARE(PFUser::signUpWithUser(user), true);
+	QCOMPARE(user->objectId().isEmpty(), false);
+
+	// Query for a user with a blank object id
+	PFErrorPtr queryError;
+	PFUserPtr cloudUser = PFQuery::getUserWithId("", queryError);
+	QCOMPARE(cloudUser.isNull(), true);
+	QCOMPARE(queryError.isNull(), true);
+
+	// Query for the user using the object id
+	cloudUser = PFQuery::getUserWithId(user->objectId(), queryError);
+	QCOMPARE(cloudUser.isNull(), false);
+	QCOMPARE(queryError.isNull(), true);
+	QCOMPARE(cloudUser->username(), user->username());
+	QCOMPARE(cloudUser->email(), user->email());
+	QCOMPARE(cloudUser->password().isEmpty(), true);
+	QCOMPARE(cloudUser->objectForKey("phone"), user->objectForKey("phone"));
+
+	// Cleanup
+	QCOMPARE(user->deleteObject(), true);
 }
 
 void TestPFQuery::test_findObjects()

@@ -189,6 +189,40 @@ void PFQuery::getObjectWithIdInBackground(const QString& objectId, QObject* getO
 	QObject::connect(this, SIGNAL(getObjectCompleted(PFObjectPtr, PFErrorPtr)), getObjectCompleteTarget, getObjectCompleteAction);
 }
 
+#pragma mark - Get User Methods
+PFUserPtr PFQuery::getUserWithId(const QString& objectId)
+{
+	PFErrorPtr error;
+	return getUserWithId(objectId, error);
+}
+
+PFUserPtr PFQuery::getUserWithId(const QString& objectId, PFErrorPtr& error)
+{
+	// Create a temp query and set the object id
+	PFQueryPtr query = PFQuery::queryWithClassName("_User");
+	query->whereKeyEqualTo("objectId", objectId);
+
+	// Prep the request and data
+	QNetworkRequest networkRequest = query->createGetUserNetworkRequest();
+
+	// Execute the request and connect the callbacks
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	QNetworkReply* networkReply = networkAccessManager->get(networkRequest);
+
+	// Block the async nature of the request using our own event loop until the reply finishes
+	QEventLoop eventLoop;
+	QObject::connect(networkReply, SIGNAL(finished()), &eventLoop, SLOT(quit()));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+
+	// Deserialize the reply
+	PFUserPtr user = query->deserializeGetUserNetworkReply(networkReply, error);
+
+	// Clean up
+	networkReply->deleteLater();
+
+	return user;
+}
+
 #pragma mark - Find Objects Methods
 
 PFObjectList PFQuery::findObjects()
@@ -472,6 +506,12 @@ QNetworkRequest PFQuery::createGetObjectNetworkRequest()
 	return request;
 }
 
+QNetworkRequest PFQuery::createGetUserNetworkRequest()
+{
+	// Use the get object network request method since it is exactly the same logic
+	return createGetObjectNetworkRequest();
+}
+
 QNetworkRequest PFQuery::createFindObjectsNetworkRequest()
 {
 	// Create the url
@@ -588,6 +628,44 @@ PFObjectPtr PFQuery::deserializeGetObjectNetworkReply(QNetworkReply* networkRepl
 		object = objects.at(0);
 
 	return object;
+}
+
+PFUserPtr PFQuery::deserializeGetUserNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error)
+{
+	// Create the object to return
+	PFUserPtr user;
+
+	// Parse the json reply
+	QJsonDocument doc = QJsonDocument::fromJson(networkReply->readAll());
+
+	// Extract the JSON payload
+	if (networkReply->error() == QNetworkReply::NoError) // SUCCESS
+	{
+		// Extract the results array
+		QJsonObject rootObject = doc.object();
+		QJsonArray results = rootObject["results"].toArray();
+
+		// Convert the first result to a PFUser if it exists
+		if (!results.isEmpty())
+		{
+			// Grab the result json user
+			QJsonValue resultValue = results.at(0);
+			QJsonObject resultUser = resultValue.toObject();
+
+			// Convert the json to a PFUser
+			QVariant userVariant = PFUser::fromJson(resultUser);
+			user = PFUser::userFromVariant(userVariant);
+		}
+	}
+	else // FAILURE
+	{
+		QJsonObject jsonObject = doc.object();
+		int errorCode = jsonObject["code"].toInt();
+		QString errorMessage = jsonObject["error"].toString();
+		error = PFError::errorWithCodeAndMessage(errorCode, errorMessage);
+	}
+
+	return user;
 }
 
 PFObjectList PFQuery::deserializeFindObjectsNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error)

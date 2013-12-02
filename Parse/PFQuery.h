@@ -54,6 +54,10 @@ public:
 	PFObjectPtr getObjectWithId(const QString& objectId, PFErrorPtr& error);
 	void getObjectWithIdInBackground(const QString& objectId, QObject* getObjectCompleteTarget, const char* getObjectCompleteAction);
 
+	// Get User Methods
+	static PFUserPtr getUserWithId(const QString& objectId);
+	static PFUserPtr getUserWithId(const QString& objectId, PFErrorPtr& error);
+
 	// Find Objects Methods - findCompleteAction signature: (bool succeeded, PFErrorPtr error)
 	PFObjectList findObjects();
 	PFObjectList findObjects(PFErrorPtr& error);
@@ -103,12 +107,14 @@ protected:
 
 	// Network Request Builder Methods
 	QNetworkRequest createGetObjectNetworkRequest();
+	QNetworkRequest createGetUserNetworkRequest();
 	QNetworkRequest createFindObjectsNetworkRequest();
 	QNetworkRequest createGetFirstObjectNetworkRequest();
 	QNetworkRequest createCountObjectsNetworkRequest();
 
 	// Network Reply Deserialization Methods
 	PFObjectPtr deserializeGetObjectNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
+	PFUserPtr deserializeGetUserNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 	PFObjectList deserializeFindObjectsNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 	PFObjectPtr deserializeGetFirstObjectNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 	int deserializeCountObjectsNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
@@ -118,16 +124,16 @@ protected:
 	QJsonObject fetchWhereKeyObject(const QString& key);
 
 	// Instance members
-	QString			_className;
-	QVariantMap		_whereMap;
-	QSet<QString>	_whereEqualKeys;
-	QStringList		_orderKeys;
-	int				_limit;
-	int				_skip;
-	QNetworkReply*	_getObjectReply;
-	QNetworkReply*	_findReply;
-	QNetworkReply*	_getFirstObjectReply;
-	QNetworkReply*	_countReply;
+	QString				_className;
+	QVariantMap			_whereMap;
+	QSet<QString>		_whereEqualKeys;
+	QStringList			_orderKeys;
+	int					_limit;
+	int					_skip;
+	QNetworkReply*		_getObjectReply;
+	QNetworkReply*		_findReply;
+	QNetworkReply*		_getFirstObjectReply;
+	QNetworkReply*		_countReply;
 };
 
 }	// End of parse namespace
