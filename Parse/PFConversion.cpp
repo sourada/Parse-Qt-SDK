@@ -101,7 +101,7 @@ QVariant convertJsonToVariant(const QJsonValue& jsonValue)
 			{
 				return PFFile::fromJson(jsonObject);
 			}
-			else if (objectType == "Pointer")
+			else if (objectType == "Pointer" || objectType == "Object")
 			{
 				QString className = jsonObject["className"].toString();
 				if (className == "_User")
