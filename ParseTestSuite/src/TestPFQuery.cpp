@@ -77,12 +77,12 @@ private slots:
 		_objects.append(referee);
 
 		// Create some objects to query for
-		PFObjectPtr baseball = PFObject::objectWithClassName("Sport");
-		baseball->setObjectForKey(QString("Baseball"), "name");
-		baseball->setObjectForKey(QString("Inning"), "timeSegment");
-		baseball->setObjectForKey(18, "totalPlayers");
-		baseball->setObjectForKey(_umpire, "official");
-		_objects.append(baseball);
+		_baseball = PFObject::objectWithClassName("Sport");
+		_baseball->setObjectForKey(QString("Baseball"), "name");
+		_baseball->setObjectForKey(QString("Inning"), "timeSegment");
+		_baseball->setObjectForKey(18, "totalPlayers");
+		_baseball->setObjectForKey(_umpire, "official");
+		_objects.append(_baseball);
 
 		PFObjectPtr football = PFObject::objectWithClassName("Sport");
 		football->setObjectForKey(QString("Football"), "name");
@@ -128,6 +128,9 @@ private slots:
 
 	// Creation Methods
 	void test_queryWithClassName();
+
+	// Include Methods
+	void test_includeKey();
 
 	// Key Constraint Methods
 	void test_whereKeyEqualTo();
@@ -181,6 +184,7 @@ private:
 
 	// Instance members
 	PFObjectList	_objects;
+	PFObjectPtr		_baseball;
 	PFObjectPtr		_umpire;
 	PFObjectPtr		_getObject;
 	PFErrorPtr		_getObjectError;
@@ -202,6 +206,44 @@ void TestPFQuery::test_queryWithClassName()
 	PFQueryPtr query = PFQuery::queryWithClassName("Character");
 	QCOMPARE(query.isNull(), false);
 	QCOMPARE(query->className(), QString("Character"));
+}
+
+void TestPFQuery::test_includeKey()
+{
+	// Query for the baseball object
+	PFObjectPtr baseball = PFQuery::getObjectOfClassWithId("Sport", _baseball->objectId());
+	QCOMPARE(baseball.isNull(), false);
+
+	// Extract the umpire and verify that the object was not included
+	PFObjectPtr umpire = PFObject::objectFromVariant(baseball->objectForKey("official"));
+	QCOMPARE(umpire.isNull(), false);
+	QCOMPARE(umpire->objectId().isEmpty(), false);
+	QCOMPARE(umpire->className(), QString("Official"));
+	QCOMPARE(umpire->allKeys().contains("name"), false);
+	QCOMPARE(umpire->allKeys().contains("sport"), false);
+
+	// Fetch the umpire to ensure we can pull the keys down
+	QCOMPARE(umpire->fetch(), true);
+	QCOMPARE(umpire->allKeys().contains("name"), true);
+	QCOMPARE(umpire->allKeys().contains("sport"), true);
+	QCOMPARE(umpire->objectForKey("name").toString(), QString("Umpire"));
+	QCOMPARE(umpire->objectForKey("sport").toString(), QString("Baseball"));
+
+	// Query for the baseball object again except use the include key to pull the umpire as well
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	query->includeKey("official");
+	baseball = query->getObjectWithId(_baseball->objectId());
+	QCOMPARE(baseball.isNull(), false);
+
+	// Extract the umpire and verify that the object WAS included
+	umpire = PFObject::objectFromVariant(baseball->objectForKey("official"));
+	QCOMPARE(umpire.isNull(), false);
+	QCOMPARE(umpire->objectId().isEmpty(), false);
+	QCOMPARE(umpire->className(), QString("Official"));
+	QCOMPARE(umpire->allKeys().contains("name"), true);
+	QCOMPARE(umpire->allKeys().contains("sport"), true);
+	QCOMPARE(umpire->objectForKey("name").toString(), QString("Umpire"));
+	QCOMPARE(umpire->objectForKey("sport").toString(), QString("Baseball"));
 }
 
 void TestPFQuery::test_whereKeyEqualTo()
