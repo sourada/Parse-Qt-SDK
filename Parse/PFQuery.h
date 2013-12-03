@@ -31,8 +31,9 @@ public:
 	// Creation Methods
 	static PFQueryPtr queryWithClassName(const QString& className);
 
-	// Include Methods
+	// Query Options
 	void includeKey(const QString& key);
+	void selectKeys(const QStringList& keys);
 
 	// Key Constraint Methods
 	void whereKeyEqualTo(const QString& key, const QVariant& object);
@@ -132,6 +133,7 @@ protected:
 	QSet<QString>		_whereEqualKeys;
 	QStringList			_orderKeys;
 	QSet<QString>		_includeKeys;
+	QSet<QString>		_selectKeys;
 	int					_limit;
 	int					_skip;
 	int					_count;

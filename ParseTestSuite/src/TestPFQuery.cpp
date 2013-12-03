@@ -129,8 +129,9 @@ private slots:
 	// Creation Methods
 	void test_queryWithClassName();
 
-	// Include Methods
+	// Query Options
 	void test_includeKey();
+	void test_selectKeys();
 
 	// Key Constraint Methods
 	void test_whereKeyEqualTo();
@@ -244,6 +245,24 @@ void TestPFQuery::test_includeKey()
 	QCOMPARE(umpire->allKeys().contains("sport"), true);
 	QCOMPARE(umpire->objectForKey("name").toString(), QString("Umpire"));
 	QCOMPARE(umpire->objectForKey("sport").toString(), QString("Baseball"));
+}
+
+void TestPFQuery::test_selectKeys()
+{
+	// Query for the baseball object and restrict it to the name and totalPlayers keys
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	QStringList keys;
+	keys << "name" << "totalPlayers";
+	query->selectKeys(keys);
+	PFObjectPtr baseball = query->getObjectWithId(_baseball->objectId());
+	QCOMPARE(baseball.isNull(), false);
+	QCOMPARE(baseball->className(), QString("Sport"));
+	QCOMPARE(baseball->objectId().isEmpty(), false);
+	QCOMPARE(baseball->allKeys().count(), 2);
+	QCOMPARE(baseball->allKeys().contains("name"), true);
+	QCOMPARE(baseball->allKeys().contains("totalPlayers"), true);
+	QCOMPARE(baseball->allKeys().contains("timeSegment"), false);
+	QCOMPARE(baseball->allKeys().contains("official"), false);
 }
 
 void TestPFQuery::test_whereKeyEqualTo()

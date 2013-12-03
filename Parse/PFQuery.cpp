@@ -63,11 +63,16 @@ PFQueryPtr PFQuery::queryWithClassName(const QString& className)
 	}
 }
 
-#pragma mark - Include Methods
+#pragma mark - Query Options
 
 void PFQuery::includeKey(const QString& key)
 {
 	_includeKeys.insert(key);
+}
+
+void PFQuery::selectKeys(const QStringList& keys)
+{
+	_selectKeys |= keys.toSet();
 }
 
 #pragma mark - Key Constraints
@@ -683,6 +688,14 @@ QNetworkRequest PFQuery::buildDefaultNetworkRequest()
 		QStringList includeKeys = _includeKeys.toList();
 		QString includeString = includeKeys.join(",");
 		urlQuery.addQueryItem("include", includeString);
+	}
+
+	// Attach the "keys" query (select keys)
+	if (!_selectKeys.isEmpty())
+	{
+		QStringList selectKeys = _selectKeys.toList();
+		QString selectString = selectKeys.join(",");
+		urlQuery.addQueryItem("keys", selectString);
 	}
 
 	// Attach the "order" query
