@@ -77,25 +77,36 @@ private slots:
 		_objects.append(referee);
 
 		// Create some objects to query for
+		QVariantList players;
+		players << QString("Pitcher") << QString("Catcher") << QString("Shortstop") << QString("Third Base");
 		_baseball = PFObject::objectWithClassName("Sport");
 		_baseball->setObjectForKey(QString("Baseball"), "name");
 		_baseball->setObjectForKey(QString("Inning"), "timeSegment");
 		_baseball->setObjectForKey(18, "totalPlayers");
 		_baseball->setObjectForKey(_umpire, "official");
+		_baseball->setObjectForKey("MLB", "association");
+		_baseball->setObjectForKey(players, "players");
 		_objects.append(_baseball);
 
+		players.clear();
+		players << QString("Quarterback") << QString("Runningback") << QString("Wide Receiver") << QString("Tight End");
 		PFObjectPtr football = PFObject::objectWithClassName("Sport");
 		football->setObjectForKey(QString("Football"), "name");
 		football->setObjectForKey(QString("Quarter"), "timeSegment");
 		football->setObjectForKey(22, "totalPlayers");
 		football->setObjectForKey(lineJudge, "official");
+		football->setObjectForKey("NFL", "association");
+		football->setObjectForKey(players, "players");
 		_objects.append(football);
 
+		players.clear();
+		players << QString("Point Guard") << QString("Guard") << QString("Center") << QString("Forward");
 		PFObjectPtr basketball = PFObject::objectWithClassName("Sport");
 		basketball->setObjectForKey(QString("Basketball"), "name");
 		basketball->setObjectForKey(QString("Period"), "timeSegment");
 		basketball->setObjectForKey(10, "totalPlayers");
 		basketball->setObjectForKey(referee, "official");
+		basketball->setObjectForKey(players, "players");
 		_objects.append(basketball);
 
 		// Save the objects in the cloud
@@ -134,8 +145,19 @@ private slots:
 	void test_selectKeys();
 
 	// Key Constraints - Object Comparisons
+	void test_whereKeyExists();
+	void test_whereKeyDoesNotExist();
 	void test_whereKeyEqualTo();
 	void test_whereKeyNotEqualTo();
+	void test_whereKeyLessThan();
+	void test_whereKeyLessThanOrEqualTo();
+	void test_whereKeyGreaterThan();
+	void test_whereKeyGreaterThanOrEqualTo();
+
+	// Key Constraints - List Comparisons
+	void test_whereKeyContainedIn();
+	void test_whereKeyNotContainedIn();
+	void test_whereKeyContainsAllObjects();
 
 	// Sorting Methods
 	void test_orderByAscending();
@@ -265,6 +287,31 @@ void TestPFQuery::test_selectKeys()
 	QCOMPARE(baseball->allKeys().contains("official"), false);
 }
 
+void TestPFQuery::test_whereKeyExists()
+{
+	// Find all sports that have an association
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	query->whereKeyExists("association");
+	query->orderByAscending("name");
+	PFObjectList objects = query->findObjects();
+	QCOMPARE(objects.count(), 2);
+	PFObjectPtr baseball = objects.at(0);
+	QCOMPARE(baseball->objectForKey("name").toString(), QString("Baseball"));
+	PFObjectPtr football = objects.at(1);
+	QCOMPARE(football->objectForKey("name").toString(), QString("Football"));
+}
+
+void TestPFQuery::test_whereKeyDoesNotExist()
+{
+	// Find all sports that do NOT have an association
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	query->whereKeyDoesNotExist("association");
+	PFObjectList objects = query->findObjects();
+	QCOMPARE(objects.count(), 1);
+	PFObjectPtr basketball = objects.at(0);
+	QCOMPARE(basketball->objectForKey("name").toString(), QString("Basketball"));
+}
+
 void TestPFQuery::test_whereKeyEqualTo()
 {
 	// Create a query with one keyEqualTo constraint
@@ -310,6 +357,14 @@ void TestPFQuery::test_whereKeyEqualTo()
 	QCOMPARE(baseball2->objectForKey("name").toString(), QString("Baseball"));
 	QCOMPARE(baseball2->objectForKey("timeSegment").toString(), QString("Inning"));
 	QCOMPARE(baseball2->objectForKey("totalPlayers").toInt(), 18);
+
+	// Find all sports with the player Quarterback
+	query = PFQuery::queryWithClassName("Sport");
+	query->whereKeyEqualTo("players", QString("Quarterback"));
+	objects = query->findObjects();
+	QCOMPARE(objects.length(), 1);
+	football = objects.at(0);
+	QCOMPARE(football->objectForKey("name").toString(), QString("Football"));
 }
 
 void TestPFQuery::test_whereKeyNotEqualTo()
@@ -362,6 +417,187 @@ void TestPFQuery::test_whereKeyNotEqualTo()
 		QCOMPARE(object->objectForKey("timeSegment").toString().isEmpty(), false);
 		QCOMPARE(object->objectForKey("totalPlayers").toInt() > 0, true);
 	}
+}
+
+void TestPFQuery::test_whereKeyLessThan()
+{
+	// Find all sports that have less than 20 players
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	query->whereKeyLessThan("totalPlayers", 20);
+	query->orderByAscending("name");
+	PFObjectList objects = query->findObjects();
+	QCOMPARE(objects.count(), 2);
+	PFObjectPtr baseball = objects.at(0);
+	QCOMPARE(baseball->objectForKey("name").toString(), QString("Baseball"));
+	QCOMPARE(baseball->objectForKey("totalPlayers").toInt(), 18);
+	PFObjectPtr basketball = objects.at(1);
+	QCOMPARE(basketball->objectForKey("name").toString(), QString("Basketball"));
+	QCOMPARE(basketball->objectForKey("totalPlayers").toInt(), 10);
+
+	// Find all sports with less than 20 players and more than 10
+	query = PFQuery::queryWithClassName("Sport");
+	query->whereKeyLessThan("totalPlayers", 20);
+	query->whereKeyGreaterThan("totalPlayers", 10);
+	objects = query->findObjects();
+	QCOMPARE(objects.count(), 1);
+	baseball = objects.at(0);
+	QCOMPARE(baseball->objectForKey("name").toString(), QString("Baseball"));
+	QCOMPARE(baseball->objectForKey("totalPlayers").toInt(), 18);
+}
+
+void TestPFQuery::test_whereKeyLessThanOrEqualTo()
+{
+	// Find all sports that have 10 or less players
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	query->whereKeyLessThanOrEqualTo("totalPlayers", 10);
+	PFObjectList objects = query->findObjects();
+	QCOMPARE(objects.count(), 1);
+	PFObjectPtr basketball = objects.at(0);
+	QCOMPARE(basketball->objectForKey("name").toString(), QString("Basketball"));
+	QCOMPARE(basketball->objectForKey("totalPlayers").toInt(), 10);
+
+	// Find all sports that have 18 to 22 players
+	query = PFQuery::queryWithClassName("Sport");
+	query->whereKeyGreaterThanOrEqualTo("totalPlayers", 18);
+	query->whereKeyLessThanOrEqualTo("totalPlayers", 22);
+	query->orderByAscending("name");
+	objects = query->findObjects();
+	QCOMPARE(objects.count(), 2);
+	PFObjectPtr baseball = objects.at(0);
+	QCOMPARE(baseball->objectForKey("name").toString(), QString("Baseball"));
+	QCOMPARE(baseball->objectForKey("totalPlayers").toInt(), 18);
+	PFObjectPtr football = objects.at(1);
+	QCOMPARE(football->objectForKey("name").toString(), QString("Football"));
+	QCOMPARE(football->objectForKey("totalPlayers").toInt(), 22);
+}
+
+void TestPFQuery::test_whereKeyGreaterThan()
+{
+	// Find all sports that have more than 20 players
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	query->whereKeyGreaterThan("totalPlayers", 20);
+	PFObjectList objects = query->findObjects();
+	QCOMPARE(objects.count(), 1);
+	PFObjectPtr football = objects.at(0);
+	QCOMPARE(football->objectForKey("name").toString(), QString("Football"));
+	QCOMPARE(football->objectForKey("totalPlayers").toInt(), 22);
+
+	// Find all sports with less than 20 players and more than 10
+	query = PFQuery::queryWithClassName("Sport");
+	query->whereKeyLessThan("totalPlayers", 20);
+	query->whereKeyGreaterThan("totalPlayers", 10);
+	objects = query->findObjects();
+	QCOMPARE(objects.count(), 1);
+	PFObjectPtr baseball = objects.at(0);
+	QCOMPARE(baseball->objectForKey("name").toString(), QString("Baseball"));
+	QCOMPARE(baseball->objectForKey("totalPlayers").toInt(), 18);
+}
+
+void TestPFQuery::test_whereKeyGreaterThanOrEqualTo()
+{
+	// Find all sports that have 22 or more players
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	query->whereKeyGreaterThanOrEqualTo("totalPlayers", 22);
+	query->orderByAscending("name");
+	PFObjectList objects = query->findObjects();
+	QCOMPARE(objects.count(), 1);
+	PFObjectPtr football = objects.at(0);
+	QCOMPARE(football->objectForKey("name").toString(), QString("Football"));
+	QCOMPARE(football->objectForKey("totalPlayers").toInt(), 22);
+
+	// Find all sports that have 18 to 22 players
+	query = PFQuery::queryWithClassName("Sport");
+	query->whereKeyGreaterThanOrEqualTo("totalPlayers", 18);
+	query->whereKeyLessThanOrEqualTo("totalPlayers", 22);
+	query->orderByAscending("name");
+	objects = query->findObjects();
+	QCOMPARE(objects.count(), 2);
+	PFObjectPtr baseball = objects.at(0);
+	QCOMPARE(baseball->objectForKey("name").toString(), QString("Baseball"));
+	QCOMPARE(baseball->objectForKey("totalPlayers").toInt(), 18);
+	football = objects.at(1);
+	QCOMPARE(football->objectForKey("name").toString(), QString("Football"));
+	QCOMPARE(football->objectForKey("totalPlayers").toInt(), 22);
+}
+
+void TestPFQuery::test_whereKeyContainedIn()
+{
+	// Find all sports associated with the MLB or NFL
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	QVariantList associations;
+	associations << QString("MLB") << QString("NFL");
+	query->whereKeyContainedIn("association", associations);
+	query->orderByAscending("name");
+	PFObjectList objects = query->findObjects();
+	QCOMPARE(objects.count(), 2);
+	PFObjectPtr baseball = objects.at(0);
+	QCOMPARE(baseball->objectForKey("name").toString(), QString("Baseball"));
+	QCOMPARE(baseball->objectForKey("association").toString(), QString("MLB"));
+	PFObjectPtr football = objects.at(1);
+	QCOMPARE(football->objectForKey("name").toString(), QString("Football"));
+	QCOMPARE(football->objectForKey("association").toString(), QString("NFL"));
+
+	// Find all sports whose official is an umpire
+	query = PFQuery::queryWithClassName("Sport");
+	QVariantList officials;
+	officials << PFObject::toVariant(_umpire);
+	query->whereKeyContainedIn("official", officials);
+	objects = query->findObjects();
+	QCOMPARE(objects.count(), 1);
+	baseball = objects.at(0);
+	QCOMPARE(baseball->objectForKey("name").toString(), QString("Baseball"));
+	QCOMPARE(PFObject::objectFromVariant(baseball->objectForKey("official"))->objectId(), _umpire->objectId());
+}
+
+void TestPFQuery::test_whereKeyNotContainedIn()
+{
+	// Find all sports NOT associated with the MLB or NFL
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	QVariantList associations;
+	associations << QString("MLB") << QString("NFL");
+	query->whereKeyNotContainedIn("association", associations);
+	PFObjectList objects = query->findObjects();
+	QCOMPARE(objects.count(), 1);
+	PFObjectPtr basketball = objects.at(0);
+	QCOMPARE(basketball->objectForKey("name").toString(), QString("Basketball"));
+	QCOMPARE(basketball->objectForKey("association").isNull(), true);
+
+	// Find all sports whose official is NOT an umpire
+	query = PFQuery::queryWithClassName("Sport");
+	QVariantList officials;
+	officials << PFObject::toVariant(_umpire);
+	query->whereKeyNotContainedIn("official", officials);
+	query->includeKey("official");
+	query->orderByAscending("name");
+	objects = query->findObjects();
+	QCOMPARE(objects.count(), 2);
+	basketball = objects.at(0);
+	QCOMPARE(basketball->objectForKey("name").toString(), QString("Basketball"));
+	QCOMPARE(PFObject::objectFromVariant(basketball->objectForKey("official"))->objectForKey("name").toString(), QString("Referee"));
+	PFObjectPtr football = objects.at(1);
+	QCOMPARE(football->objectForKey("name").toString(), QString("Football"));
+	QCOMPARE(PFObject::objectFromVariant(football->objectForKey("official"))->objectForKey("name").toString(), QString("Line Judge"));
+}
+
+void TestPFQuery::test_whereKeyContainsAllObjects()
+{
+	// Find the sports that contain both a pitcher and catcher player
+	PFQueryPtr query = PFQuery::queryWithClassName("Sport");
+	QVariantList players;
+	players << QString("Pitcher") << QString("Catcher");
+	query->whereKeyContainsAllObjects("players", players);
+	PFObjectList objects = query->findObjects();
+	QCOMPARE(objects.count(), 1);
+	PFObjectPtr baseball = objects.at(0);
+	QCOMPARE(baseball->objectForKey("name").toString(), QString("Baseball"));
+	QVariantList baseballPlayerVariants = baseball->objectForKey("players").toList();
+	QStringList baseballPlayers;
+	foreach (const QVariant& baseballPlayerVariant, baseballPlayerVariants)
+		baseballPlayers << baseballPlayerVariant.toString();
+	QCOMPARE(baseballPlayers.at(0), QString("Pitcher"));
+	QCOMPARE(baseballPlayers.at(1), QString("Catcher"));
+	QCOMPARE(baseballPlayers.at(2), QString("Shortstop"));
+	QCOMPARE(baseballPlayers.at(3), QString("Third Base"));
 }
 
 void TestPFQuery::test_orderByAscending()

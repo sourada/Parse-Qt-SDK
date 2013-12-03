@@ -43,8 +43,19 @@ public:
 	void selectKeys(const QStringList& keys);
 
 	// Key Constraints - Object Comparisons
+	void whereKeyExists(const QString& key);
+	void whereKeyDoesNotExist(const QString& key);
 	void whereKeyEqualTo(const QString& key, const QVariant& object);
 	void whereKeyNotEqualTo(const QString& key, const QVariant& object);
+	void whereKeyLessThan(const QString& key, const QVariant& object);
+	void whereKeyLessThanOrEqualTo(const QString& key, const QVariant& object);
+	void whereKeyGreaterThan(const QString& key, const QVariant& object);
+	void whereKeyGreaterThanOrEqualTo(const QString& key, const QVariant& object);
+
+	// Key Constraints - List Comparisons
+	void whereKeyContainedIn(const QString& key, const QVariantList& objects);
+	void whereKeyNotContainedIn(const QString& key, const QVariantList& objects);
+	void whereKeyContainsAllObjects(const QString& key, const QVariantList& objects);
 
 	////////////////////////////////
 	//       Sorting Methods

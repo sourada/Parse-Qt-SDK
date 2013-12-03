@@ -77,6 +77,16 @@ void PFQuery::selectKeys(const QStringList& keys)
 
 #pragma mark - Key Constraints - Object Comparisons
 
+void PFQuery::whereKeyExists(const QString& key)
+{
+	addWhereOption(key, "$exists", true);
+}
+
+void PFQuery::whereKeyDoesNotExist(const QString& key)
+{
+	addWhereOption(key, "$exists", false);
+}
+
 void PFQuery::whereKeyEqualTo(const QString& key, const QVariant& object)
 {
 	_whereMap[key] = object;
@@ -86,6 +96,43 @@ void PFQuery::whereKeyEqualTo(const QString& key, const QVariant& object)
 void PFQuery::whereKeyNotEqualTo(const QString& key, const QVariant& object)
 {
 	addWhereOption(key, "$ne", object);
+}
+
+void PFQuery::whereKeyLessThan(const QString& key, const QVariant& object)
+{
+	addWhereOption(key, "$lt", object);
+}
+
+void PFQuery::whereKeyLessThanOrEqualTo(const QString& key, const QVariant& object)
+{
+	addWhereOption(key, "$lte", object);
+}
+
+void PFQuery::whereKeyGreaterThan(const QString& key, const QVariant& object)
+{
+	addWhereOption(key, "$gt", object);
+}
+
+void PFQuery::whereKeyGreaterThanOrEqualTo(const QString& key, const QVariant& object)
+{
+	addWhereOption(key, "$gte", object);
+}
+
+#pragma mark - Key Constraints - List Comparisons
+
+void PFQuery::whereKeyContainedIn(const QString& key, const QVariantList& objects)
+{
+	addWhereOption(key, "$in", objects);
+}
+
+void PFQuery::whereKeyNotContainedIn(const QString& key, const QVariantList& objects)
+{
+	addWhereOption(key, "$nin", objects);
+}
+
+void PFQuery::whereKeyContainsAllObjects(const QString& key, const QVariantList& objects)
+{
+	addWhereOption(key, "$all", objects);
 }
 
 #pragma mark - Sorting Methods
