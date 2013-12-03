@@ -7,6 +7,7 @@
 //
 
 #include "PFError.h"
+#include "PFQuery.h"
 #include "PFUser.h"
 #include "TestRunner.h"
 
@@ -119,6 +120,9 @@ private slots:
 	void test_requestPasswordResetForEmail();
 	void test_requestPasswordResetForEmailWithError();
 	void test_requestPasswordResetForEmailInBackground();
+
+	// Query Methods
+	void test_query();
 
 	// PFSerializable Methods
 	void test_fromJson();
@@ -616,6 +620,42 @@ void TestPFUser::test_requestPasswordResetForEmailInBackground()
 	// Delete our test user (valid user now) from the cloud to cleanup
 	bool deletedUser = testUser->deleteObject();
 	QCOMPARE(deletedUser, true);
+}
+
+void TestPFUser::test_query()
+{
+	// Create a couple test users and save them into the cloud
+	PFUserPtr user1 = PFUser::user();
+	user1->setUsername("TestPFUser_test_query1");
+	user1->setEmail("TestPFUser_test_query1@parse.com");
+	user1->setPassword("testPassword");
+	user1->setObjectForKey(QString("Kansas City, MO"), "hometown");
+	QCOMPARE(PFUser::signUpWithUser(user1), true);
+	PFUserPtr user2 = PFUser::user();
+	user2->setUsername("TestPFUser_test_query2");
+	user2->setEmail("TestPFUser_test_query2@parse.com");
+	user2->setPassword("testPassword");
+	user2->setObjectForKey(QString("Ames, IA"), "hometown");
+	QCOMPARE(PFUser::signUpWithUser(user2), true);
+
+	// Make sure we're logged out
+	PFUser::logOut();
+
+	// Create a query to pull down the users
+	PFQueryPtr userQuery = PFUser::query();
+	userQuery->orderByAscending("hometown");
+	PFObjectList users = userQuery->findObjects();
+	QCOMPARE(users.count(), 2);
+
+	// Test the results
+	QCOMPARE(users.at(0)->objectForKey("hometown").toString(), QString("Ames, IA"));
+	QCOMPARE(users.at(1)->objectForKey("hometown").toString(), QString("Kansas City, MO"));
+
+	// Cleanup the users
+	PFUser::logInWithUsernameAndPassword(user1->username(), user1->password());
+	QCOMPARE(user1->deleteObject(), true);
+	PFUser::logInWithUsernameAndPassword(user2->username(), user2->password());
+	QCOMPARE(user2->deleteObject(), true);
 }
 
 void TestPFUser::test_fromJson()

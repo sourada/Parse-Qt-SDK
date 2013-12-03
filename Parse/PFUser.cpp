@@ -11,6 +11,7 @@
 #include "PFDateTime.h"
 #include "PFError.h"
 #include "PFManager.h"
+#include "PFQuery.h"
 #include "PFUser.h"
 
 // Qt headers
@@ -330,6 +331,14 @@ void PFUser::requestPasswordResetForEmailInBackground(const QString& email, QObj
 	networkAccessManager->post(request, data);
 	QObject::connect(networkAccessManager, SIGNAL(finished(QNetworkReply*)), gPasswordResetUser.data(), SLOT(handleRequestPasswordResetReply(QNetworkReply*)));
 	QObject::connect(gPasswordResetUser.data(), SIGNAL(requestPasswordResetCompleted(bool, PFErrorPtr)), target, action);
+}
+
+#pragma mark - Query Methods
+
+PFQueryPtr PFUser::query()
+{
+	PFQueryPtr query = PFQuery::queryWithClassName("__PFUSER_QUERY__");
+	return query;
 }
 
 #pragma mark - PFSerializable Methods

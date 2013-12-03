@@ -96,6 +96,13 @@ public:
 	//   @param action The slot to be notified when the password reset request completes - SLOT(requestPasswordResetCompleted(bool, PFErrorPtr))
 	static void requestPasswordResetForEmailInBackground(const QString& email, QObject* target, const char* action);
 
+	////////////////////////////////
+	//       Query Methods
+	////////////////////////////////
+
+	// Creates a query for PFUser objects
+	static PFQueryPtr query();
+
 	//=================================================================================
 	//                                BACKEND API
 	//=================================================================================

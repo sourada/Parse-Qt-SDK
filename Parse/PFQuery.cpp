@@ -23,6 +23,8 @@
 
 namespace parse {
 
+#define PFUSER_QUERY_CLASSNAME		"__PFUSER_QUERY__"
+
 #pragma mark - Memory Management Methods
 
 PFQuery::PFQuery()
@@ -482,6 +484,8 @@ QNetworkRequest PFQuery::createGetObjectNetworkRequest()
 {
 	// Create the url
 	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _className);
+	if (_className == PFUSER_QUERY_CLASSNAME)
+		url = QUrl(QString("https://api.parse.com/1/users"));
 	QUrlQuery urlQuery;
 
 	// Attach the "where" query
@@ -516,6 +520,8 @@ QNetworkRequest PFQuery::createFindObjectsNetworkRequest()
 {
 	// Create the url
 	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _className);
+	if (_className == PFUSER_QUERY_CLASSNAME)
+		url = QUrl(QString("https://api.parse.com/1/users"));
 	QUrlQuery urlQuery;
 
 	// Attach the "where" query
@@ -577,6 +583,8 @@ QNetworkRequest PFQuery::createCountObjectsNetworkRequest()
 {
 	// Create the url
 	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _className);
+	if (_className == PFUSER_QUERY_CLASSNAME)
+		url = QUrl(QString("https://api.parse.com/1/users"));
 	QUrlQuery urlQuery;
 
 	// Attach the "where" query
