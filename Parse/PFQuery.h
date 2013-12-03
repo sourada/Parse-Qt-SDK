@@ -31,6 +31,9 @@ public:
 	// Creation Methods
 	static PFQueryPtr queryWithClassName(const QString& className);
 
+	// Include Methods
+	void includeKey(const QString& key);
+
 	// Key Constraint Methods
 	void whereKeyEqualTo(const QString& key, const QVariant& object);
 	void whereKeyNotEqualTo(const QString& key, const QVariant& object);
@@ -119,17 +122,19 @@ protected:
 	PFObjectPtr deserializeGetFirstObjectNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 	int deserializeCountObjectsNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 
-	// Key Helper Methods
+	// Protected Helper Methods
 	void addWhereOption(const QString& key, const QString& option, const QVariant& object);
-	QJsonObject fetchWhereKeyObject(const QString& key);
+	QNetworkRequest buildDefaultNetworkRequest();
 
 	// Instance members
 	QString				_className;
 	QVariantMap			_whereMap;
 	QSet<QString>		_whereEqualKeys;
 	QStringList			_orderKeys;
+	QSet<QString>		_includeKeys;
 	int					_limit;
 	int					_skip;
+	int					_count;
 	QNetworkReply*		_getObjectReply;
 	QNetworkReply*		_findReply;
 	QNetworkReply*		_getFirstObjectReply;

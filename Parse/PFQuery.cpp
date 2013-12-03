@@ -34,6 +34,7 @@ PFQuery::PFQuery()
 	// Set ivar defaults
 	_limit = -1;
 	_skip = -1;
+	_count = -1;
 	_getObjectReply = NULL;
 	_findReply = NULL;
 	_getFirstObjectReply = NULL;
@@ -60,6 +61,13 @@ PFQueryPtr PFQuery::queryWithClassName(const QString& className)
 		query->_className = className;
 		return query;
 	}
+}
+
+#pragma mark - Include Methods
+
+void PFQuery::includeKey(const QString& key)
+{
+	_includeKeys.insert(key);
 }
 
 #pragma mark - Key Constraints
@@ -482,92 +490,17 @@ void PFQuery::handleCountObjectsCompleted()
 
 QNetworkRequest PFQuery::createGetObjectNetworkRequest()
 {
-	// Create the url
-	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _className);
-	if (_className == PFUSER_QUERY_CLASSNAME)
-		url = QUrl(QString("https://api.parse.com/1/users"));
-	QUrlQuery urlQuery;
-
-	// Attach the "where" query
-	QJsonObject whereJsonObject = PFConversion::convertVariantToJson(_whereMap).toObject();
-	QString whereJsonString = QString::fromUtf8(QJsonDocument(whereJsonObject).toJson(QJsonDocument::Compact));
-	urlQuery.addQueryItem("where", whereJsonString);
-
-	// Attach the url query to the url
-	url.setQuery(urlQuery);
-
-	// Create the request
-	QNetworkRequest request(url);
-
-	// Attach the necessary raw headers
-	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
-	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
-
-	// Attach the session token if we're authenticated as a particular user
-	if (PFUser::currentUser() && PFUser::currentUser()->isAuthenticated())
-		request.setRawHeader(QString("X-Parse-Session-Token").toUtf8(), PFUser::currentUser()->sessionToken().toUtf8());
-
-	return request;
+	return buildDefaultNetworkRequest();
 }
 
 QNetworkRequest PFQuery::createGetUserNetworkRequest()
 {
-	// Use the get object network request method since it is exactly the same logic
-	return createGetObjectNetworkRequest();
+	return buildDefaultNetworkRequest();
 }
 
 QNetworkRequest PFQuery::createFindObjectsNetworkRequest()
 {
-	// Create the url
-	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _className);
-	if (_className == PFUSER_QUERY_CLASSNAME)
-		url = QUrl(QString("https://api.parse.com/1/users"));
-	QUrlQuery urlQuery;
-
-	// Attach the "where" query
-	if (!_whereMap.isEmpty())
-	{
-		QJsonObject whereJsonObject = PFConversion::convertVariantToJson(_whereMap).toObject();
-		QString whereJsonString = QString::fromUtf8(QJsonDocument(whereJsonObject).toJson(QJsonDocument::Compact));
-		urlQuery.addQueryItem("where", whereJsonString);
-	}
-
-	// Attach the "order" query
-	if (!_orderKeys.isEmpty())
-	{
-		QString orderString = _orderKeys.join(",");
-		urlQuery.addQueryItem("order", orderString);
-	}
-
-	// Attach the "limit" query
-	if (_limit != -1)
-	{
-		QString limitString = QString::number(_limit);
-		urlQuery.addQueryItem("limit", limitString);
-	}
-
-	// Attach the "skip" query
-	if (_skip != -1)
-	{
-		QString skipString = QString::number(_skip);
-		urlQuery.addQueryItem("skip", skipString);
-	}
-
-	// Attach the url query to the url
-	url.setQuery(urlQuery);
-
-	// Create the request
-	QNetworkRequest request(url);
-
-	// Attach the necessary raw headers
-	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
-	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
-
-	// Attach the session token if we're authenticated as a particular user
-	if (PFUser::currentUser() && PFUser::currentUser()->isAuthenticated())
-		request.setRawHeader(QString("X-Parse-Session-Token").toUtf8(), PFUser::currentUser()->sessionToken().toUtf8());
-
-	return request;
+	return buildDefaultNetworkRequest();
 }
 
 QNetworkRequest PFQuery::createGetFirstObjectNetworkRequest()
@@ -575,54 +508,16 @@ QNetworkRequest PFQuery::createGetFirstObjectNetworkRequest()
 	// Force the limit to 1
 	_limit = 1;
 
-	// Use the find objects network request method since they're the same
-	return createFindObjectsNetworkRequest();
+	return buildDefaultNetworkRequest();
 }
 
 QNetworkRequest PFQuery::createCountObjectsNetworkRequest()
 {
-	// Create the url
-	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _className);
-	if (_className == PFUSER_QUERY_CLASSNAME)
-		url = QUrl(QString("https://api.parse.com/1/users"));
-	QUrlQuery urlQuery;
+	// Set the limit and count
+	_limit = 0;
+	_count = 1;
 
-	// Attach the "where" query
-	if (!_whereMap.isEmpty())
-	{
-		QJsonObject whereJsonObject = PFConversion::convertVariantToJson(_whereMap).toObject();
-		QString whereJsonString = QString::fromUtf8(QJsonDocument(whereJsonObject).toJson(QJsonDocument::Compact));
-		urlQuery.addQueryItem("where", whereJsonString);
-	}
-
-	// Attach the "order" query
-	if (!_orderKeys.isEmpty())
-	{
-		QString orderString = _orderKeys.join(",");
-		urlQuery.addQueryItem("order", orderString);
-	}
-
-	// Attach the "limit" query - manually set this to 0 to guarantee we don't get any result objects back
-	urlQuery.addQueryItem("limit", "0");
-
-	// Attach the "count" query - has to be 1
-	urlQuery.addQueryItem("count", "1");
-
-	// Attach the url query to the url
-	url.setQuery(urlQuery);
-
-	// Create the request
-	QNetworkRequest request(url);
-
-	// Attach the necessary raw headers
-	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
-	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
-
-	// Attach the session token if we're authenticated as a particular user
-	if (PFUser::currentUser() && PFUser::currentUser()->isAuthenticated())
-		request.setRawHeader(QString("X-Parse-Session-Token").toUtf8(), PFUser::currentUser()->sessionToken().toUtf8());
-
-	return request;
+	return buildDefaultNetworkRequest();
 }
 
 #pragma mark - Network Reply Deserialization Methods
@@ -745,7 +640,7 @@ int PFQuery::deserializeCountObjectsNetworkReply(QNetworkReply* networkReply, PF
 	return count;
 }
 
-#pragma mark - Key Helper Methods
+#pragma mark - Protected Helper Methods
 
 void PFQuery::addWhereOption(const QString& key, const QString& option, const QVariant& object)
 {
@@ -762,6 +657,77 @@ void PFQuery::addWhereOption(const QString& key, const QString& option, const QV
 	// Add the new options to the key map and update the where map
 	keyMap[option] = object;
 	_whereMap[key] = keyMap;
+}
+
+QNetworkRequest PFQuery::buildDefaultNetworkRequest()
+{
+	// Create the url
+	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _className);
+	if (_className == PFUSER_QUERY_CLASSNAME)
+		url = QUrl(QString("https://api.parse.com/1/users"));
+
+	// Create the url query
+	QUrlQuery urlQuery;
+
+	// Attach the "where" query
+	if (!_whereMap.isEmpty())
+	{
+		QJsonObject whereJsonObject = PFConversion::convertVariantToJson(_whereMap).toObject();
+		QString whereJsonString = QString::fromUtf8(QJsonDocument(whereJsonObject).toJson(QJsonDocument::Compact));
+		urlQuery.addQueryItem("where", whereJsonString);
+	}
+
+	// Attach the "include" query
+	if (!_includeKeys.isEmpty())
+	{
+		QStringList includeKeys = _includeKeys.toList();
+		QString includeString = includeKeys.join(",");
+		urlQuery.addQueryItem("include", includeString);
+	}
+
+	// Attach the "order" query
+	if (!_orderKeys.isEmpty())
+	{
+		QString orderString = _orderKeys.join(",");
+		urlQuery.addQueryItem("order", orderString);
+	}
+
+	// Attach the "limit" query
+	if (_limit != -1)
+	{
+		QString limitString = QString::number(_limit);
+		urlQuery.addQueryItem("limit", limitString);
+	}
+
+	// Attach the "skip" query
+	if (_skip != -1)
+	{
+		QString skipString = QString::number(_skip);
+		urlQuery.addQueryItem("skip", skipString);
+	}
+
+	// Attach the "count" query
+	if (_count != -1)
+	{
+		QString countString = QString::number(_count);
+		urlQuery.addQueryItem("count", countString);
+	}
+
+	// Attach the url query to the url
+	url.setQuery(urlQuery);
+
+	// Create the request
+	QNetworkRequest networkRequest(url);
+
+	// Attach the necessary raw headers
+	networkRequest.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
+	networkRequest.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
+
+	// Attach the session token if we're authenticated as a particular user
+	if (PFUser::currentUser() && PFUser::currentUser()->isAuthenticated())
+		networkRequest.setRawHeader(QString("X-Parse-Session-Token").toUtf8(), PFUser::currentUser()->sessionToken().toUtf8());
+
+	return networkRequest;
 }
 
 }	// End of parse namespace
