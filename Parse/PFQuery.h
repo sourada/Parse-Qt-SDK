@@ -28,59 +28,106 @@ public:
 	//                                  USER API
 	//=================================================================================
 
-	// Creation Methods
+	////////////////////////////////
+	//      Creation Methods
+	////////////////////////////////
+
 	static PFQueryPtr queryWithClassName(const QString& className);
 
-	// Query Options
+	////////////////////////////////
+	//        Query Options
+	////////////////////////////////
+
+	// Key Inclusion/Exclusion
 	void includeKey(const QString& key);
 	void selectKeys(const QStringList& keys);
 
-	// Key Constraint Methods
+	// Key Constraints - Object Comparisons
 	void whereKeyEqualTo(const QString& key, const QVariant& object);
 	void whereKeyNotEqualTo(const QString& key, const QVariant& object);
 
-	// Sorting Methods
+	////////////////////////////////
+	//       Sorting Methods
+	////////////////////////////////
+
+	// Sort the results in ascending or descending order
 	void orderByAscending(const QString& key);
 	void orderByDescending(const QString& key);
 	void addAscendingOrder(const QString& key);
 	void addDescendingOrder(const QString& key);
 
-	// Pagination Methods
+	////////////////////////////////
+	//      Pagination Methods
+	////////////////////////////////
+
+	// A limit on the number of objects to return. The default limit is 100, with a
+	// maximum of 1000 results being returned at a time.
 	void setLimit(int limit);
 	int limit();
+
+	// The number of objects to skip before returning any
 	void setSkip(int skip);
 	int skip();
 
-	// Get Object Methods - getObjectCompleteAction signature: (PFObjectPtr object, PFErrorPtr error)
+	////////////////////////////////
+	//     Get Object Methods
+	////////////////////////////////
+
+	// Convenience methods for getting a single object
 	static PFObjectPtr getObjectOfClassWithId(const QString& className, const QString& objectId);
 	static PFObjectPtr getObjectOfClassWithId(const QString& className, const QString& objectId, PFErrorPtr& error);
+
+	// Return a PFObject with the given object id - getCompleteAction signature: (PFObjectPtr object, PFErrorPtr error)
 	PFObjectPtr getObjectWithId(const QString& objectId);
 	PFObjectPtr getObjectWithId(const QString& objectId, PFErrorPtr& error);
-	void getObjectWithIdInBackground(const QString& objectId, QObject* getObjectCompleteTarget, const char* getObjectCompleteAction);
+	void getObjectWithIdInBackground(const QString& objectId, QObject* getCompleteTarget, const char* getCompleteAction);
 
-	// Get User Methods
+	////////////////////////////////
+	//      Get User Methods
+	////////////////////////////////
+
+	// Returns a PFUser with the given object id
 	static PFUserPtr getUserWithId(const QString& objectId);
 	static PFUserPtr getUserWithId(const QString& objectId, PFErrorPtr& error);
 
-	// Find Objects Methods - findCompleteAction signature: (bool succeeded, PFErrorPtr error)
+	////////////////////////////////
+	//     Find Objects Methods
+	////////////////////////////////
+
+	// Finds objects based on the constructed query - findCompleteAction signature: (bool succeeded, PFErrorPtr error)
 	PFObjectList findObjects();
 	PFObjectList findObjects(PFErrorPtr& error);
 	void findObjectsInBackground(QObject* findCompleteTarget, const char* findCompleteAction);
 
-	// Get First Object Methods - getCompleteAction signature: (PFObjectPtr object, PFErrorPtr error)
+	////////////////////////////////
+	//   Get First Object Methods
+	////////////////////////////////
+
+	// Gets an object based on the constructed query - getCompleteAction signature: (PFObjectPtr object, PFErrorPtr error)
 	PFObjectPtr getFirstObject();
 	PFObjectPtr getFirstObject(PFErrorPtr& error);
 	void getFirstObjectInBackground(QObject* getCompleteTarget, const char* getCompleteAction);
 
-	// Count Objects Methods - countCompleteAction signature: (int count, PFErrorPtr error)
+	////////////////////////////////
+	//    Count Objects Methods
+	////////////////////////////////
+
+	// Counts objects based on the constructed query - countCompleteAction signature: (int count, PFErrorPtr error)
 	int countObjects();
 	int countObjects(PFErrorPtr& error);
 	void countObjectsInBackground(QObject* countCompleteTarget, const char* countCompleteAction);
 
-	// Cancel Methods
+	////////////////////////////////
+	//    Cancellation Methods
+	////////////////////////////////
+
+	// Cancels the current network request (if any). Ensures callbacks won't be called.
 	void cancel();
 
-	// Accessor Methods
+	////////////////////////////////
+	//        Accessors
+	////////////////////////////////
+
 	const QString& className();
 
 	//=================================================================================

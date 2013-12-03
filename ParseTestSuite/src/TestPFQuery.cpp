@@ -129,11 +129,11 @@ private slots:
 	// Creation Methods
 	void test_queryWithClassName();
 
-	// Query Options
+	// Key Inclusion/Exclusion
 	void test_includeKey();
 	void test_selectKeys();
 
-	// Key Constraint Methods
+	// Key Constraints - Object Comparisons
 	void test_whereKeyEqualTo();
 	void test_whereKeyNotEqualTo();
 

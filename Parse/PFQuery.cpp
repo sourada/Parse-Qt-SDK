@@ -63,7 +63,7 @@ PFQueryPtr PFQuery::queryWithClassName(const QString& className)
 	}
 }
 
-#pragma mark - Query Options
+#pragma mark - Key Inclusion/Exclusion
 
 void PFQuery::includeKey(const QString& key)
 {
@@ -75,7 +75,7 @@ void PFQuery::selectKeys(const QStringList& keys)
 	_selectKeys |= keys.toSet();
 }
 
-#pragma mark - Key Constraints
+#pragma mark - Key Constraints - Object Comparisons
 
 void PFQuery::whereKeyEqualTo(const QString& key, const QVariant& object)
 {
@@ -185,7 +185,7 @@ PFObjectPtr PFQuery::getObjectWithId(const QString& objectId, PFErrorPtr& error)
 	return object;
 }
 
-void PFQuery::getObjectWithIdInBackground(const QString& objectId, QObject* getObjectCompleteTarget, const char* getObjectCompleteAction)
+void PFQuery::getObjectWithIdInBackground(const QString& objectId, QObject* getCompleteTarget, const char* getCompleteAction)
 {
 	// Reset the where map and add the object id key
 	_whereMap.clear();
@@ -201,7 +201,7 @@ void PFQuery::getObjectWithIdInBackground(const QString& objectId, QObject* getO
 
 	// Connect all the callbacks
 	QObject::connect(_getObjectReply, SIGNAL(finished()), this, SLOT(handleGetObjectCompleted()));
-	QObject::connect(this, SIGNAL(getObjectCompleted(PFObjectPtr, PFErrorPtr)), getObjectCompleteTarget, getObjectCompleteAction);
+	QObject::connect(this, SIGNAL(getObjectCompleted(PFObjectPtr, PFErrorPtr)), getCompleteTarget, getCompleteAction);
 }
 
 #pragma mark - Get User Methods
