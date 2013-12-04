@@ -259,9 +259,9 @@ bool PFFile::save(PFErrorPtr& error)
 	return success;
 }
 
-bool PFFile::saveInBackground(QObject *saveCompleteTarget, const char *saveCompleteAction)
+bool PFFile::saveInBackground(QObject *target, const char *action)
 {
-	return saveInBackground(NULL, "", saveCompleteTarget, saveCompleteAction);
+	return saveInBackground(0, 0, target, action);
 }
 
 bool PFFile::saveInBackground(QObject *saveProgressTarget, const char *saveProgressAction, QObject *saveCompleteTarget, const char *saveCompleteAction)
@@ -293,9 +293,10 @@ bool PFFile::saveInBackground(QObject *saveProgressTarget, const char *saveProgr
 	QObject::connect(_saveReply, SIGNAL(finished()), this, SLOT(handleSaveCompleted()));
 
 	// Connect the callbacks from this object to the target actions
-	if (saveProgressTarget != NULL)
+	if (saveProgressTarget)
 		QObject::connect(this, SIGNAL(saveProgressUpdated(double)), saveProgressTarget, saveProgressAction);
-	QObject::connect(this, SIGNAL(saveCompleted(bool, PFErrorPtr)), saveCompleteTarget, saveCompleteAction);
+	if (saveCompleteTarget)
+		QObject::connect(this, SIGNAL(saveCompleted(bool, PFErrorPtr)), saveCompleteTarget, saveCompleteAction);
 
 	return true;
 }
@@ -330,9 +331,9 @@ QByteArray* PFFile::getData()
 	return NULL;
 }
 
-bool PFFile::getDataInBackground(QObject *getDataCompleteTarget, const char *getDataCompleteAction)
+bool PFFile::getDataInBackground(QObject *target, const char *action)
 {
-	return getDataInBackground(NULL, "", getDataCompleteTarget, getDataCompleteAction);
+	return getDataInBackground(0, 0, target, action);
 }
 
 bool PFFile::getDataInBackground(QObject *getDataProgressTarget, const char *getDataProgressAction,
@@ -370,9 +371,10 @@ bool PFFile::getDataInBackground(QObject *getDataProgressTarget, const char *get
 	QObject::connect(_getDataReply, SIGNAL(finished()), this, SLOT(handleGetDataCompleted()));
 
 	// Connect the callbacks from this object to the target actions
-	if (getDataProgressTarget != NULL)
+	if (getDataProgressTarget)
 		QObject::connect(this, SIGNAL(getDataProgressUpdated(double)), getDataProgressTarget, getDataProgressAction);
-	QObject::connect(this, SIGNAL(getDataCompleted(QByteArray*, PFErrorPtr)), getDataCompleteTarget, getDataCompleteAction);
+	if (getDataCompleteTarget)
+		QObject::connect(this, SIGNAL(getDataCompleted(QByteArray*, PFErrorPtr)), getDataCompleteTarget, getDataCompleteAction);
 
 	return true;
 }

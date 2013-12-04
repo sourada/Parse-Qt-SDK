@@ -88,10 +88,10 @@ public:
 	static PFObjectPtr getObjectOfClassWithId(const QString& className, const QString& objectId);
 	static PFObjectPtr getObjectOfClassWithId(const QString& className, const QString& objectId, PFErrorPtr& error);
 
-	// Return a PFObject with the given object id - getCompleteAction signature: (PFObjectPtr object, PFErrorPtr error)
+	// Return a PFObject with the given object id - action signature: (PFObjectPtr object, PFErrorPtr error)
 	PFObjectPtr getObjectWithId(const QString& objectId);
 	PFObjectPtr getObjectWithId(const QString& objectId, PFErrorPtr& error);
-	void getObjectWithIdInBackground(const QString& objectId, QObject* getCompleteTarget, const char* getCompleteAction);
+	void getObjectWithIdInBackground(const QString& objectId, QObject* target, const char* action);
 
 	////////////////////////////////
 	//      Get User Methods
@@ -105,28 +105,28 @@ public:
 	//     Find Objects Methods
 	////////////////////////////////
 
-	// Finds objects based on the constructed query - findCompleteAction signature: (bool succeeded, PFErrorPtr error)
+	// Finds objects based on the constructed query - action signature: (bool succeeded, PFErrorPtr error)
 	PFObjectList findObjects();
 	PFObjectList findObjects(PFErrorPtr& error);
-	void findObjectsInBackground(QObject* findCompleteTarget, const char* findCompleteAction);
+	void findObjectsInBackground(QObject* target, const char* action);
 
 	////////////////////////////////
 	//   Get First Object Methods
 	////////////////////////////////
 
-	// Gets an object based on the constructed query - getCompleteAction signature: (PFObjectPtr object, PFErrorPtr error)
+	// Gets an object based on the constructed query - action signature: (PFObjectPtr object, PFErrorPtr error)
 	PFObjectPtr getFirstObject();
 	PFObjectPtr getFirstObject(PFErrorPtr& error);
-	void getFirstObjectInBackground(QObject* getCompleteTarget, const char* getCompleteAction);
+	void getFirstObjectInBackground(QObject* target, const char* action);
 
 	////////////////////////////////
 	//    Count Objects Methods
 	////////////////////////////////
 
-	// Counts objects based on the constructed query - countCompleteAction signature: (int count, PFErrorPtr error)
+	// Counts objects based on the constructed query - action signature: (int count, PFErrorPtr error)
 	int countObjects();
 	int countObjects(PFErrorPtr& error);
-	void countObjectsInBackground(QObject* countCompleteTarget, const char* countCompleteAction);
+	void countObjectsInBackground(QObject* target, const char* action);
 
 	////////////////////////////////
 	//    Cancellation Methods

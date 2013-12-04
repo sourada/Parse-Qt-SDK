@@ -60,8 +60,9 @@ public:
 	//   @param saveCompleteTarget The target to be notified when the save completes.
 	//   @param saveCompleteAction The slot to be notified when the save completes - SLOT(saveCompleted(bool, PFErrorPtr)).
 	//   @return True if the async save process was started, false otherwise.
-	bool saveInBackground(QObject *saveCompleteTarget, const char *saveCompleteAction);
-	bool saveInBackground(QObject *saveProgressTarget, const char *saveProgressAction, QObject *saveCompleteTarget, const char *saveCompleteAction);
+	bool saveInBackground(QObject *target = 0, const char *action = 0);
+	bool saveInBackground(QObject *saveProgressTarget, const char *saveProgressAction,
+						  QObject *saveCompleteTarget, const char *saveCompleteAction);
 
 	////////////////////////////////
 	//     Get Data Methods
@@ -82,8 +83,9 @@ public:
 	//   @param getDataCompleteTarget The target to be notified when the get data completes.
 	//   @param getDataCompleteAction The slot to be notified when the get data completes - SLOT(getDataCompleted(bool, PFErrorPtr)).
 	//   @return True if the async get data process was started, false otherwise.
-	bool getDataInBackground(QObject *getDataCompleteTarget, const char *getDataCompleteAction);
-	bool getDataInBackground(QObject *getDataProgressTarget, const char *getDataProgressAction, QObject *getDataCompleteTarget, const char *getDataCompleteAction);
+	bool getDataInBackground(QObject *target = 0, const char *action = 0);
+	bool getDataInBackground(QObject *getDataProgressTarget, const char *getDataProgressAction,
+							 QObject *getDataCompleteTarget, const char *getDataCompleteAction);
 
 	////////////////////////////////
 	//       Cancellation

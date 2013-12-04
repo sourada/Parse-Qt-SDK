@@ -61,7 +61,7 @@ public:
 	//   @param user The user object to sign up with Parse
 	//   @param target The target to be notified when the sign up completes
 	//   @param action The slot to be notified when the sign up completes - SLOT(signUpCompleted(bool, PFErrorPtr))
-	static void signUpWithUserInBackground(PFUserPtr user, QObject* target, const char* action);
+	static void signUpWithUserInBackground(PFUserPtr user, QObject* target = 0, const char* action = 0);
 
 	////////////////////////////////
 	//       Log In Methods
@@ -75,7 +75,8 @@ public:
 	//   @param password The password to use when logging in to Parse
 	//   @param target The target to be notified when the log in completes
 	//   @param action The slot to be notified when the log in completes - SLOT(logInCompleted(bool, PFErrorPtr))
-	static void logInWithUsernameAndPasswordInBackground(const QString& username, const QString& password, QObject* target, const char* action);
+	static void logInWithUsernameAndPasswordInBackground(const QString& username, const QString& password,
+														 QObject* target = 0, const char* action = 0);
 
 	////////////////////////////////
 	//       Log Out Methods
@@ -94,7 +95,7 @@ public:
 	//   @param email The email to try to reset the password for
 	//   @param target The target to be notified when the password reset request completes
 	//   @param action The slot to be notified when the password reset request completes - SLOT(requestPasswordResetCompleted(bool, PFErrorPtr))
-	static void requestPasswordResetForEmailInBackground(const QString& email, QObject* target, const char* action);
+	static void requestPasswordResetForEmailInBackground(const QString& email, QObject* target = 0, const char* action = 0);
 
 	////////////////////////////////
 	//       Query Methods

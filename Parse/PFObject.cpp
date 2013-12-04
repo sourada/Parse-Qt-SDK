@@ -478,7 +478,7 @@ bool PFObject::save(PFErrorPtr& error)
 	return success;
 }
 
-bool PFObject::saveInBackground(QObject *saveCompleteTarget, const char *saveCompleteAction)
+bool PFObject::saveInBackground(QObject *target, const char *action)
 {
 	// Early out if the file is already saving
 	if (_isSaving)
@@ -503,7 +503,8 @@ bool PFObject::saveInBackground(QObject *saveCompleteTarget, const char *saveCom
 	else
 		networkAccessManager->post(request, data);
 	QObject::connect(networkAccessManager, SIGNAL(finished(QNetworkReply*)), this, SLOT(handleSaveCompleted(QNetworkReply*)));
-	QObject::connect(this, SIGNAL(saveCompleted(bool, PFErrorPtr)), saveCompleteTarget, saveCompleteAction);
+	if (target)
+		QObject::connect(this, SIGNAL(saveCompleted(bool, PFErrorPtr)), target, action);
 
 	return true;
 }
@@ -563,7 +564,7 @@ bool PFObject::saveAll(PFObjectList objects, PFErrorPtr& error)
 	return success;
 }
 
-bool PFObject::saveAllInBackground(PFObjectList objects, QObject *saveCompleteTarget, const char *saveCompleteAction)
+bool PFObject::saveAllInBackground(PFObjectList objects, QObject *target, const char *action)
 {
 	// Make sure we aren't already saving any of the objects
 	foreach (PFObjectPtr object, objects)
@@ -594,7 +595,8 @@ bool PFObject::saveAllInBackground(PFObjectList objects, QObject *saveCompleteTa
 
 	// Hook up the callbacks to the temp object
 	QObject::connect(networkAccessManager, SIGNAL(finished(QNetworkReply*)), callbackObject, SLOT(handleSaveAllCompleted(QNetworkReply*)));
-	QObject::connect(callbackObject, SIGNAL(saveAllCompleted(bool, PFErrorPtr)), saveCompleteTarget, saveCompleteAction);
+	if (target)
+		QObject::connect(callbackObject, SIGNAL(saveAllCompleted(bool, PFErrorPtr)), target, action);
 
 	return true;
 }
@@ -645,7 +647,7 @@ bool PFObject::deleteObject(PFErrorPtr& error)
 	return success;
 }
 
-bool PFObject::deleteObjectInBackground(QObject *deleteObjectCompleteTarget, const char *deleteObjectCompleteAction)
+bool PFObject::deleteObjectInBackground(QObject *target, const char *action)
 {
 	// Early out if the object is already being deleted
 	if (_isDeleting)
@@ -664,7 +666,8 @@ bool PFObject::deleteObjectInBackground(QObject *deleteObjectCompleteTarget, con
 	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
 	networkAccessManager->deleteResource(networkRequest);
 	QObject::connect(networkAccessManager, SIGNAL(finished(QNetworkReply*)), this, SLOT(handleDeleteObjectCompleted(QNetworkReply*)));
-	QObject::connect(this, SIGNAL(deleteObjectCompleted(bool, PFErrorPtr)), deleteObjectCompleteTarget, deleteObjectCompleteAction);
+	if (target)
+		QObject::connect(this, SIGNAL(deleteObjectCompleted(bool, PFErrorPtr)), target, action);
 
 	return true;
 }
@@ -724,7 +727,7 @@ bool PFObject::deleteAllObjects(PFObjectList objects, PFErrorPtr& error)
 	return success;
 }
 
-bool PFObject::deleteAllObjectsInBackground(PFObjectList objects, QObject *deleteObjectCompleteTarget, const char *deleteObjectCompleteAction)
+bool PFObject::deleteAllObjectsInBackground(PFObjectList objects, QObject *target, const char *action)
 {
 	// Make sure we aren't already deleting any of the objects
 	foreach (PFObjectPtr object, objects)
@@ -755,7 +758,8 @@ bool PFObject::deleteAllObjectsInBackground(PFObjectList objects, QObject *delet
 
 	// Hook up the callbacks to the temp object
 	QObject::connect(networkAccessManager, SIGNAL(finished(QNetworkReply*)), callbackObject, SLOT(handleDeleteAllObjectsCompleted(QNetworkReply*)));
-	QObject::connect(callbackObject, SIGNAL(deleteAllObjectsCompleted(bool, PFErrorPtr)), deleteObjectCompleteTarget, deleteObjectCompleteAction);
+	if (target)
+		QObject::connect(callbackObject, SIGNAL(deleteAllObjectsCompleted(bool, PFErrorPtr)), target, action);
 
 	return true;
 }
@@ -823,7 +827,7 @@ bool PFObject::fetch(PFErrorPtr& error)
 	return success;
 }
 
-bool PFObject::fetchInBackground(QObject *fetchCompleteTarget, const char *fetchCompleteAction)
+bool PFObject::fetchInBackground(QObject *target, const char *action)
 {
 	// Early out if the object is already being fetched
 	if (_isFetching)
@@ -849,7 +853,8 @@ bool PFObject::fetchInBackground(QObject *fetchCompleteTarget, const char *fetch
 	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
 	networkAccessManager->get(networkRequest);
 	QObject::connect(networkAccessManager, SIGNAL(finished(QNetworkReply*)), this, SLOT(handleFetchCompleted(QNetworkReply*)));
-	QObject::connect(this, SIGNAL(fetchCompleted(bool, PFErrorPtr)), fetchCompleteTarget, fetchCompleteAction);
+	if (target)
+		QObject::connect(this, SIGNAL(fetchCompleted(bool, PFErrorPtr)), target, action);
 
 	return true;
 }
@@ -895,12 +900,12 @@ bool PFObject::fetchIfNeeded(PFErrorPtr& error)
 		return fetch(error);
 }
 
-bool PFObject::fetchIfNeededInBackground(QObject *fetchCompleteTarget, const char *fetchCompleteAction)
+bool PFObject::fetchIfNeededInBackground(QObject *target, const char *action)
 {
 	if (isDataAvailable())
 		return false;
 	else
-		return fetchInBackground(fetchCompleteTarget, fetchCompleteAction);
+		return fetchInBackground(target, action);
 }
 
 #pragma mark - Fetch All If Needed Methods

@@ -65,44 +65,44 @@ public:
 	PFDateTimePtr createdAt();
 	PFDateTimePtr updatedAt();
 
-	// Save Methods - saveCompleteAction signature: (bool succeeded, PFErrorPtr error)
+	// Save Methods - action signature: (bool succeeded, PFErrorPtr error)
 	bool save();
 	bool save(PFErrorPtr& error);
-	bool saveInBackground(QObject *saveCompleteTarget, const char *saveCompleteAction);
+	bool saveInBackground(QObject *target = 0, const char *action = 0);
 
-	// Save All Methods - saveCompleteAction signature: (bool succeeded, PFErrorPtr error)
+	// Save All Methods - action signature: (bool succeeded, PFErrorPtr error)
 	static bool saveAll(PFObjectList objects);
 	static bool saveAll(PFObjectList objects, PFErrorPtr& error);
-	static bool saveAllInBackground(PFObjectList objects, QObject *saveCompleteTarget, const char *saveCompleteAction);
+	static bool saveAllInBackground(PFObjectList objects, QObject *target, const char *action);
 
-	// Delete Methods - deleteObjectCompleteAction signature: (bool succeeded, PFErrorPtr error)
+	// Delete Methods - action signature: (bool succeeded, PFErrorPtr error)
 	bool deleteObject();
 	bool deleteObject(PFErrorPtr& error);
-	bool deleteObjectInBackground(QObject *deleteObjectCompleteTarget, const char *deleteObjectCompleteAction);
+	bool deleteObjectInBackground(QObject *target = 0, const char *action = 0);
 
-	// Delete All Methods - deleteObjectCompleteAction signature: (bool succeeded, PFErrorPtr error)
+	// Delete All Methods - action signature: (bool succeeded, PFErrorPtr error)
 	static bool deleteAllObjects(PFObjectList objects);
 	static bool deleteAllObjects(PFObjectList objects, PFErrorPtr& error);
-	static bool deleteAllObjectsInBackground(PFObjectList objects, QObject *deleteObjectCompleteTarget, const char *deleteObjectCompleteAction);
+	static bool deleteAllObjectsInBackground(PFObjectList objects, QObject *target = 0, const char *action = 0);
 
 	// Returns true if new or has been fetched, false otherwise
 	bool isDataAvailable();
 
-	// Fetch Methods - fetchCompleteAction signature: (bool succeeded, PFErrorPtr error)
+	// Fetch Methods - action signature: (bool succeeded, PFErrorPtr error)
 	bool fetch();
 	bool fetch(PFErrorPtr& error);
-	bool fetchInBackground(QObject *fetchCompleteTarget, const char *fetchCompleteAction);
+	bool fetchInBackground(QObject *target = 0, const char *action = 0);
 
 	// Fetch All Methods
 	static bool fetchAll(PFObjectList objects);
 	static bool fetchAll(PFObjectList objects, PFErrorPtr& error);
 
-	// Fetch If Needed Methods - fetchCompleteAction signature: (bool succeeded, PFErrorPtr error)
+	// Fetch If Needed Methods - action signature: (bool succeeded, PFErrorPtr error)
 	// Returns true if a fetch was actually started, false otherwise. Also, these methods only
 	// execute a fetch from the server if isDataAvailable() is false.
 	bool fetchIfNeeded();
 	bool fetchIfNeeded(PFErrorPtr& error);
-	bool fetchIfNeededInBackground(QObject *fetchCompleteTarget, const char *fetchCompleteAction);
+	bool fetchIfNeededInBackground(QObject *target = 0, const char *action = 0);
 
 	// Fetch All Methods
 	static bool fetchAllIfNeeded(PFObjectList objects);

@@ -232,7 +232,7 @@ PFObjectPtr PFQuery::getObjectWithId(const QString& objectId, PFErrorPtr& error)
 	return object;
 }
 
-void PFQuery::getObjectWithIdInBackground(const QString& objectId, QObject* getCompleteTarget, const char* getCompleteAction)
+void PFQuery::getObjectWithIdInBackground(const QString& objectId, QObject* target, const char* action)
 {
 	// Reset the where map and add the object id key
 	_whereMap.clear();
@@ -248,7 +248,7 @@ void PFQuery::getObjectWithIdInBackground(const QString& objectId, QObject* getC
 
 	// Connect all the callbacks
 	QObject::connect(_getObjectReply, SIGNAL(finished()), this, SLOT(handleGetObjectCompleted()));
-	QObject::connect(this, SIGNAL(getObjectCompleted(PFObjectPtr, PFErrorPtr)), getCompleteTarget, getCompleteAction);
+	QObject::connect(this, SIGNAL(getObjectCompleted(PFObjectPtr, PFErrorPtr)), target, action);
 }
 
 #pragma mark - Get User Methods
@@ -316,7 +316,7 @@ PFObjectList PFQuery::findObjects(PFErrorPtr& error)
 	return objects;
 }
 
-void PFQuery::findObjectsInBackground(QObject* findCompleteTarget, const char* findCompleteAction)
+void PFQuery::findObjectsInBackground(QObject* target, const char* action)
 {
 	// Prep the request and data
 	QNetworkRequest networkRequest = createFindObjectsNetworkRequest();
@@ -327,7 +327,7 @@ void PFQuery::findObjectsInBackground(QObject* findCompleteTarget, const char* f
 
 	// Connect all the callbacks
 	QObject::connect(_findReply, SIGNAL(finished()), this, SLOT(handleFindObjectsCompleted()));
-	QObject::connect(this, SIGNAL(findObjectsCompleted(PFObjectList, PFErrorPtr)), findCompleteTarget, findCompleteAction);
+	QObject::connect(this, SIGNAL(findObjectsCompleted(PFObjectList, PFErrorPtr)), target, action);
 }
 
 #pragma mark - Get First Object Methods
@@ -361,7 +361,7 @@ PFObjectPtr PFQuery::getFirstObject(PFErrorPtr& error)
 	return object;
 }
 
-void PFQuery::getFirstObjectInBackground(QObject* getCompleteTarget, const char* getCompleteAction)
+void PFQuery::getFirstObjectInBackground(QObject* target, const char* action)
 {
 	// Prep the request and data
 	QNetworkRequest networkRequest = createFindObjectsNetworkRequest();
@@ -372,7 +372,7 @@ void PFQuery::getFirstObjectInBackground(QObject* getCompleteTarget, const char*
 
 	// Connect all the callbacks
 	QObject::connect(_getFirstObjectReply, SIGNAL(finished()), this, SLOT(handleGetFirstObjectCompleted()));
-	QObject::connect(this, SIGNAL(getFirstObjectCompleted(PFObjectPtr, PFErrorPtr)), getCompleteTarget, getCompleteAction);
+	QObject::connect(this, SIGNAL(getFirstObjectCompleted(PFObjectPtr, PFErrorPtr)), target, action);
 }
 
 #pragma mark - Count Objects Methods
@@ -406,7 +406,7 @@ int PFQuery::countObjects(PFErrorPtr& error)
 	return count;
 }
 
-void PFQuery::countObjectsInBackground(QObject* countCompleteTarget, const char* countCompleteAction)
+void PFQuery::countObjectsInBackground(QObject* target, const char* action)
 {
 	// Prep the request and data
 	QNetworkRequest networkRequest = createCountObjectsNetworkRequest();
@@ -417,7 +417,7 @@ void PFQuery::countObjectsInBackground(QObject* countCompleteTarget, const char*
 
 	// Connect all the callbacks
 	QObject::connect(_countReply, SIGNAL(finished()), this, SLOT(handleCountObjectsCompleted()));
-	QObject::connect(this, SIGNAL(countObjectsCompleted(int, PFErrorPtr)), countCompleteTarget, countCompleteAction);
+	QObject::connect(this, SIGNAL(countObjectsCompleted(int, PFErrorPtr)), target, action);
 }
 
 #pragma mark - Cancel Methods

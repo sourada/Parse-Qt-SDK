@@ -199,7 +199,8 @@ void PFUser::signUpWithUserInBackground(PFUserPtr user, QObject* target, const c
 	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
 	networkAccessManager->post(request, data);
 	QObject::connect(networkAccessManager, SIGNAL(finished(QNetworkReply*)), gSignUpUser.data(), SLOT(handleSignUpReply(QNetworkReply*)));
-	QObject::connect(gSignUpUser.data(), SIGNAL(signUpCompleted(bool, PFErrorPtr)), target, action);
+	if (target)
+		QObject::connect(gSignUpUser.data(), SIGNAL(signUpCompleted(bool, PFErrorPtr)), target, action);
 }
 
 #pragma mark - Log In Methods
@@ -263,7 +264,8 @@ void PFUser::logInWithUsernameAndPasswordInBackground(const QString& username, c
 	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
 	networkAccessManager->get(request);
 	QObject::connect(networkAccessManager, SIGNAL(finished(QNetworkReply*)), gLogInUser.data(), SLOT(handleLogInReply(QNetworkReply*)));
-	QObject::connect(gLogInUser.data(), SIGNAL(logInCompleted(bool, PFErrorPtr)), target, action);
+	if (target)
+		QObject::connect(gLogInUser.data(), SIGNAL(logInCompleted(bool, PFErrorPtr)), target, action);
 }
 
 #pragma mark - Log Out Methods
@@ -330,7 +332,8 @@ void PFUser::requestPasswordResetForEmailInBackground(const QString& email, QObj
 	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
 	networkAccessManager->post(request, data);
 	QObject::connect(networkAccessManager, SIGNAL(finished(QNetworkReply*)), gPasswordResetUser.data(), SLOT(handleRequestPasswordResetReply(QNetworkReply*)));
-	QObject::connect(gPasswordResetUser.data(), SIGNAL(requestPasswordResetCompleted(bool, PFErrorPtr)), target, action);
+	if (target)
+		QObject::connect(gPasswordResetUser.data(), SIGNAL(requestPasswordResetCompleted(bool, PFErrorPtr)), target, action);
 }
 
 #pragma mark - Query Methods
