@@ -191,6 +191,8 @@ private slots:
 
 	void test_savingWithPermissions();
 	void test_fetchingWithPermissions();
+	void test_asyncSavingWithoutCallbacks();
+	void test_asyncFetchWithoutCallbacks();
 
 private:
 
@@ -3005,6 +3007,53 @@ void TestPFObject::test_fetchingWithPermissions()
 	// Cleanup
 	QCOMPARE(sofa->deleteObject(), true);
 	QCOMPARE(PFUser::currentUser()->deleteObject(), true);
+}
+
+void TestPFObject::test_asyncSavingWithoutCallbacks()
+{
+	// Create a bow weapon and save it in the background
+	PFObjectPtr bow = PFObject::objectWithClassName("Weapon");
+	bow->setObjectForKey(QString("Bow"), "weaponClass");
+	bow->setObjectForKey(12, "attackMin");
+	bow->setObjectForKey(34, "attackMax");
+	bow->setObjectForKey(25, "strengthRequired");
+	bool saveStarted = bow->saveInBackground();
+	QCOMPARE(saveStarted, true);
+
+	// Continue processing events until the bow save has finished
+	while (bow->objectId().isEmpty())
+		QCoreApplication::processEvents();
+
+	// Test to make sure the object id has been set
+	QCOMPARE(bow->objectId().isEmpty(), false);
+
+	// Cleanup - Delete the object in the background
+	bow->deleteObjectInBackground();
+
+	// Continue processing events until the bow delete has finished
+	while (!(bow->objectId().isEmpty()))
+		QCoreApplication::processEvents();
+
+	// Test to make sure the object id has been removed meaning that it has been removed from the cloud
+	QCOMPARE(bow->objectId().isEmpty(), true);
+}
+
+void TestPFObject::test_asyncFetchWithoutCallbacks()
+{
+	// Manually create the axe object and fetch it in the background
+	PFObjectPtr axe = PFObject::objectWithClassName(_axe->className(), _axe->objectId());
+	bool fetchStarted = axe->fetchInBackground();
+	QCOMPARE(fetchStarted, true);
+
+	// Continue processing events until the axe fetch
+	while (axe->createdAt().isNull())
+		QCoreApplication::processEvents();
+
+	// Test the keys of the axe to make sure the fetch worked properly
+	QCOMPARE(_axe->objectForKey("weaponClass").toString(), QString("Axe"));
+	QCOMPARE(_axe->objectForKey("attackMin").toInt(), 19);
+	QCOMPARE(_axe->objectForKey("attackMax").toInt(), 26);
+	QCOMPARE(_axe->objectForKey("strengthRequired").toInt(), 65);
 }
 
 DECLARE_TEST(TestPFObject)
