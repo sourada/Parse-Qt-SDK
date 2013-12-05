@@ -10,11 +10,13 @@
 #define PARSE_PARSE_H
 
 #include "PFACL.h"
+#include "PFConversion.h"
 #include "PFDateTime.h"
 #include "PFError.h"
 #include "PFFile.h"
 #include "PFManager.h"
 #include "PFObject.h"
+#include "PFQuery.h"
 #include "PFSerializable.h"
 #include "PFTypedefs.h"
 #include "PFUser.h"
