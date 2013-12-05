@@ -3,7 +3,7 @@ Parse-Qt-SDK
 
 The Parse Qt SDK is a [FreeBSD](http://en.wikipedia.org/wiki/BSD_licenses) licensed C++ library designed to make working with [Parse](https://www.parse.com) and [Qt 5](http://qt-project.org) as easy as possible. It was designed to closely mimic the iOS SDK to make switching between the two as easy as swapping blocks for signals/slots. It abstracts the entire Rest API from the user by handling all the network requests, replies and JSON parsing in the background.
 
-To ensure the quality of the library, it comes with a Parse Test Suite that has full coverage of the public "User APIs". It is quite easy to invoke. See the Testing section for more details. It is important to note that right now I've only compiled against Mac OS X Mavericks. I will be adding support for Windows here shortly (should be very minor changes).
+To ensure the quality of the library, it comes with a Parse Test Suite that has full coverage of the public "User APIs". It is quite easy to invoke. See the Testing section for more details.
 
 For more information about the project, updates, pending tickets and in-depth documentation, please refer to the following:
 
@@ -25,6 +25,12 @@ The Parse-Qt-SDK uses the QTest library to provide a comprehensive set of unitte
 	$ cd $PARSE_QT_SDK_HOME/ParseTestSuite
 	$ qmake -spec macx-xcode (or whatever flavor you like)
 	$ Open Xcode project and Build/Run
+
+Currently, the library has been fully tested on the following platforms:
+
+* Mac OS X - Mountain Lion
+* Mac OS X - Mavericks
+* Windows 8
 
 Support
 -------
