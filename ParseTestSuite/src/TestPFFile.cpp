@@ -61,7 +61,9 @@ private slots:
 
 		// Set the data path
 		QDir currentDir = QDir::current();
+#ifdef __APPLE__
 		currentDir.cdUp();
+#endif
 		_dataPath = currentDir.absoluteFilePath("data");
 	}
 
