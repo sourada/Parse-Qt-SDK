@@ -21,7 +21,9 @@ namespace parse {
 
 namespace PFConversion {
 
+#ifdef __APPLE__
 #pragma mark - Recursive Conversion Methods
+#endif
 
 QJsonValue convertVariantToJson(const QVariant& variant)
 {
@@ -136,7 +138,9 @@ QVariant convertJsonToVariant(const QJsonValue& jsonValue)
 	}
 }
 
+#ifdef __APPLE__
 #pragma mark - Conversion Methods
+#endif
 
 bool areEqual(const QVariant& variant1, const QVariant& variant2)
 {

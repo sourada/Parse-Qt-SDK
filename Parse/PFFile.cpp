@@ -25,7 +25,9 @@ namespace parse {
 // Static Globals
 static QString gDefaultName = "parse_file-no_name";
 
+#ifdef __APPLE__
 #pragma mark - Memory Management Methods
+#endif
 
 PFFile::PFFile()
 {
@@ -49,7 +51,9 @@ PFFile::~PFFile()
 	qDebug().nospace() << "Destroyed PFFile(" << QString().sprintf("%8p", this) << ")";
 }
 
+#ifdef __APPLE__
 #pragma mark - Creation Methods for Upload
+#endif
 
 PFFilePtr PFFile::fileWithData(QByteArrayPtr data)
 {
@@ -161,7 +165,9 @@ PFFilePtr PFFile::fileFromVariant(const QVariant& variant)
 	return PFFilePtr();
 }
 
+#ifdef __APPLE__
 #pragma mark - Creation Methods for Download
+#endif
 
 PFFilePtr PFFile::fileWithNameAndUrl(const QString& name, const QString& url)
 {
@@ -182,7 +188,9 @@ PFFilePtr PFFile::fileWithNameAndUrl(const QString& name, const QString& url)
 	}
 }
 
+#ifdef __APPLE__
 #pragma mark - Object Info Getter Methods
+#endif
 
 const QString& PFFile::filepath()
 {
@@ -204,7 +212,9 @@ bool PFFile::isDirty()
 	return _isDirty;
 }
 
+#ifdef __APPLE__
 #pragma mark - Save Methods
+#endif
 
 bool PFFile::save()
 {
@@ -301,7 +311,9 @@ bool PFFile::saveInBackground(QObject *saveProgressTarget, const char *saveProgr
 	return true;
 }
 
+#ifdef __APPLE__
 #pragma mark - Get Data Methods
+#endif
 
 bool PFFile::isDataAvailable()
 {
@@ -379,7 +391,9 @@ bool PFFile::getDataInBackground(QObject *getDataProgressTarget, const char *get
 	return true;
 }
 
+#ifdef __APPLE__
 #pragma mark - Cancellation Methods
+#endif
 
 void PFFile::cancel()
 {
@@ -408,7 +422,9 @@ void PFFile::cancel()
 	}
 }
 
+#ifdef __APPLE__
 #pragma mark - Backend API - PFSerializable Methods
+#endif
 
 QVariant PFFile::fromJson(const QJsonObject& jsonObject)
 {
@@ -439,7 +455,9 @@ const QString PFFile::pfClassName() const
 	return "PFFile";
 }
 
+#ifdef __APPLE__
 #pragma mark - Protected Save Slots
+#endif
 
 void PFFile::handleSaveProgressUpdated(qint64 bytesSent, qint64 bytesTotal)
 {
@@ -475,7 +493,9 @@ void PFFile::handleSaveCompleted()
 	_saveReply->deleteLater();
 }
 
+#ifdef __APPLE__
 #pragma mark - Protected Get Data Slots
+#endif
 
 void PFFile::handleGetDataReadyRead()
 {
@@ -531,7 +551,9 @@ void PFFile::handleGetDataCompleted()
 	_getDataReply->deleteLater();
 }
 
+#ifdef __APPLE__
 #pragma mark - Network Request Builder Methods
+#endif
 
 QNetworkRequest PFFile::createSaveNetworkRequest()
 {
@@ -544,7 +566,9 @@ QNetworkRequest PFFile::createSaveNetworkRequest()
 	return request;
 }
 
+#ifdef __APPLE__
 #pragma mark - Network Reply Deserialization Methods
+#endif
 
 bool PFFile::deserializeSaveNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error)
 {

@@ -18,7 +18,9 @@ namespace parse {
 // Static Globals
 static QMutex gPFManagerMutex;
 
+#ifdef __APPLE__
 #pragma mark - Memory Management Methods
+#endif
 
 PFManager::PFManager() :
 	_applicationId(""),
@@ -38,7 +40,9 @@ PFManager::~PFManager()
 	// No-op
 }
 
+#ifdef __APPLE__
 #pragma mark - Creation Methods
+#endif
 
 PFManager* PFManager::sharedManager()
 {
@@ -47,7 +51,9 @@ PFManager* PFManager::sharedManager()
 	return &manager;
 }
 
+#ifdef __APPLE__
 #pragma mark - User API
+#endif
 
 void PFManager::setApplicationIdAndRestApiKey(const QString& applicationId, const QString& restApiKey)
 {
@@ -65,7 +71,9 @@ const QString& PFManager::restApiKey()
 	return _restApiKey;
 }
 
+#ifdef __APPLE__
 #pragma mark - Backend API - Caching and Network Methods
+#endif
 
 QNetworkAccessManager* PFManager::networkAccessManager()
 {

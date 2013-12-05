@@ -29,7 +29,9 @@ static PFUserPtr gSignUpUser;			// temp - used while signing in then discarded
 static PFUserPtr gLogInUser;			// temp - used while logging in then discarded
 static PFUserPtr gPasswordResetUser;    // temp - used while requesting a password reset then discarded
 
+#ifdef __APPLE__
 #pragma mark - Memory Management Methods
+#endif
 
 PFUser::PFUser() : PFObject(),
 	_username(""),
@@ -46,7 +48,9 @@ PFUser::~PFUser()
 	qDebug().nospace() << "Destroyed PFUser(" << QString().sprintf("%8p", this) << ")";
 }
 
+#ifdef __APPLE__
 #pragma mark - Static Creation Methods
+#endif
 
 PFUserPtr PFUser::currentUser()
 {
@@ -82,7 +86,9 @@ PFUserPtr PFUser::userFromVariant(const QVariant& variant)
 	return PFUserPtr();
 }
 
+#ifdef __APPLE__
 #pragma mark - Public Accessor Methods
+#endif
 
 bool PFUser::isAuthenticated()
 {
@@ -141,7 +147,9 @@ const QString& PFUser::sessionToken()
 	return _sessionToken;
 }
 
+#ifdef __APPLE__
 #pragma mark - Sign In Methods
+#endif
 
 bool PFUser::signUpWithUser(PFUserPtr user)
 {
@@ -203,7 +211,9 @@ void PFUser::signUpWithUserInBackground(PFUserPtr user, QObject* target, const c
 		QObject::connect(gSignUpUser.data(), SIGNAL(signUpCompleted(bool, PFErrorPtr)), target, action);
 }
 
+#ifdef __APPLE__
 #pragma mark - Log In Methods
+#endif
 
 PFUserPtr PFUser::logInWithUsernameAndPassword(const QString& username, const QString& password)
 {
@@ -268,7 +278,9 @@ void PFUser::logInWithUsernameAndPasswordInBackground(const QString& username, c
 		QObject::connect(gLogInUser.data(), SIGNAL(logInCompleted(bool, PFErrorPtr)), target, action);
 }
 
+#ifdef __APPLE__
 #pragma mark - Log Out Methods
+#endif
 
 void PFUser::logOut()
 {
@@ -279,7 +291,9 @@ void PFUser::logOut()
 	gCurrentUser = PFUserPtr();
 }
 
+#ifdef __APPLE__
 #pragma mark - Password Reset Methods
+#endif
 
 bool PFUser::requestPasswordResetForEmail(const QString& email)
 {
@@ -336,7 +350,9 @@ void PFUser::requestPasswordResetForEmailInBackground(const QString& email, QObj
 		QObject::connect(gPasswordResetUser.data(), SIGNAL(requestPasswordResetCompleted(bool, PFErrorPtr)), target, action);
 }
 
+#ifdef __APPLE__
 #pragma mark - Query Methods
+#endif
 
 PFQueryPtr PFUser::query()
 {
@@ -344,7 +360,9 @@ PFQueryPtr PFUser::query()
 	return query;
 }
 
+#ifdef __APPLE__
 #pragma mark - PFSerializable Methods
+#endif
 
 QVariant PFUser::fromJson(const QJsonObject& jsonObject)
 {
@@ -386,7 +404,9 @@ const QString PFUser::pfClassName() const
 	return "PFUser";
 }
 
+#ifdef __APPLE__
 #pragma mark - Background Network Reply Completion Slots
+#endif
 
 void PFUser::handleSignUpReply(QNetworkReply* networkReply)
 {
@@ -453,7 +473,9 @@ void PFUser::handleRequestPasswordResetReply(QNetworkReply* networkReply)
 	gPasswordResetUser = PFUserPtr();
 }
 
+#ifdef __APPLE__
 #pragma mark - Protected Network Request Builder Methods
+#endif
 
 void PFUser::createSignUpNetworkRequest(QNetworkRequest& request, QByteArray& data)
 {
@@ -510,7 +532,9 @@ void PFUser::createPasswordResetNetworkRequest(QNetworkRequest& request, QByteAr
 	data = QJsonDocument(jsonObject).toJson(QJsonDocument::Compact);
 }
 
+#ifdef __APPLE__
 #pragma mark - Network Request Builder Methods - PFObject Overrides
+#endif
 
 void PFUser::createSaveNetworkRequest(QNetworkRequest& request, QByteArray& data)
 {
@@ -562,7 +586,9 @@ QNetworkRequest PFUser::createFetchNetworkRequest()
 	return request;
 }
 
+#ifdef __APPLE__
 #pragma mark - Protected Network Reply Deserialization Methods
+#endif
 
 bool PFUser::deserializeSignUpNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error)
 {
@@ -651,7 +677,10 @@ bool PFUser::deserializeFetchNetworkReply(QNetworkReply* networkReply, PFErrorPt
 	return success;
 }
 
+#ifdef __APPLE__
 #pragma mark - Recursive JSON Conversion Helper Methods
+#endif
+
 void PFUser::stripInstanceMembersFromProperties()
 {
 	// First make sure to call the parent method to get our base stripping to occur

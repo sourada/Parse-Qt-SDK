@@ -71,7 +71,9 @@ extern int const kPFErrorFileDownloadConnectionFailed = 300;
 
 namespace parse {
 
+#ifdef __APPLE__
 #pragma mark - Memory Management Methods
+#endif
 
 PFError::PFError(int errorCode, const QString& errorMessage) :
 	_errorCode(errorCode),
@@ -85,7 +87,9 @@ PFError::~PFError()
 	qDebug().nospace() << "Destroyed PFError(" << QString().sprintf("%8p", this) << ")";
 }
 
+#ifdef __APPLE__
 #pragma mark - Static Creation Methods
+#endif
 
 PFErrorPtr PFError::errorWithCodeAndMessage(int code, const QString& message)
 {
@@ -93,7 +97,9 @@ PFErrorPtr PFError::errorWithCodeAndMessage(int code, const QString& message)
 	return error;
 }
 
+#ifdef __APPLE__
 #pragma mark - Error Access Methods
+#endif
 
 int PFError::errorCode() const
 {
@@ -107,7 +113,9 @@ const QString& PFError::errorMessage() const
 
 }	// End of parse namespace
 
+#ifdef __APPLE__
 #pragma mark - Custom Debug Output
+#endif
 
 QDebug operator<<(QDebug dbg, parse::PFErrorPtr error)
 {

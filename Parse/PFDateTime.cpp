@@ -14,7 +14,9 @@ namespace parse {
 // Static Globals
 static QString gParseDateFormat = "yyyy-MM-ddTHH:mm:ss.zzzZ";
 
+#ifdef __APPLE__
 #pragma mark - Memory Management Methods
+#endif
 
 PFDateTime::PFDateTime(const QDateTime& dateTime) :
 	_dateTime(dateTime)
@@ -27,7 +29,9 @@ PFDateTime::~PFDateTime()
 	qDebug().nospace() << "Destroyed PFDateTime(" << QString().sprintf("%8p", this) << ")";
 }
 
+#ifdef __APPLE__
 #pragma mark - Static Creation Methods
+#endif
 
 PFDateTimePtr PFDateTime::dateTimeFromParseString(const QString& parseString)
 {
@@ -70,7 +74,9 @@ PFDateTimePtr PFDateTime::dateTimeFromVariant(const QVariant& variant)
 	return PFDateTimePtr();
 }
 
+#ifdef __APPLE__
 #pragma mark - DateTime Access Methods
+#endif
 
 QString PFDateTime::toParseString() const
 {
@@ -82,7 +88,9 @@ const QDateTime& PFDateTime::dateTime() const
 	return _dateTime;
 }
 
+#ifdef __APPLE__
 #pragma mark - PFSerializable Methods
+#endif
 
 QVariant PFDateTime::fromJson(const QJsonObject& jsonObject)
 {
@@ -105,7 +113,9 @@ const QString PFDateTime::pfClassName() const
 
 }	// End of parse namespace
 
+#ifdef __APPLE__
 #pragma mark - Custom Debug Output
+#endif
 
 QDebug operator<<(QDebug dbg, const parse::PFDateTimePtr& dateTime)
 {

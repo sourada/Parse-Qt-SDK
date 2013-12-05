@@ -21,7 +21,9 @@ namespace parse {
 static PFACLPtr gDefaultACL = PFACLPtr();
 static bool gDefaultCurrentUserAccess = false;
 
+#ifdef __APPLE__
 #pragma mark - Memory Management Methods
+#endif
 
 PFACL::PFACL()
 {
@@ -33,7 +35,9 @@ PFACL::~PFACL()
 	qDebug().nospace() << "Destroyed PFACL(" << QString().sprintf("%8p", this) << ")";
 }
 
+#ifdef __APPLE__
 #pragma mark - Creation Methods
+#endif
 
 PFACLPtr PFACL::ACL()
 {
@@ -77,7 +81,9 @@ PFACLPtr PFACL::clone()
 	return acl;
 }
 
+#ifdef __APPLE__
 #pragma mark - Default ACL Methods
+#endif
 
 void PFACL::setDefaultACLWithAccessForCurrentUser(PFACLPtr defaultACL, bool currentUserAccess)
 {
@@ -91,7 +97,9 @@ void PFACL::defaultACLWithCurrentUserAccess(PFACLPtr& defaultACL, bool& currentU
 	currentUserAccess = gDefaultCurrentUserAccess;
 }
 
+#ifdef __APPLE__
 #pragma mark - Public Access Methods
+#endif
 
 void PFACL::setPublicReadAccess(bool allowed)
 {
@@ -155,7 +163,9 @@ bool PFACL::publicWriteAccess()
 	return false;
 }
 
+#ifdef __APPLE__
 #pragma mark - Per-User Access Methods
+#endif
 
 void PFACL::setReadAccessForUserId(bool allowed, const QString& userId)
 {
@@ -239,7 +249,9 @@ bool PFACL::writeAccessForUserId(const QString& userId)
 	return (isUserWritable || isPublicWritable);
 }
 
+#ifdef __APPLE__
 #pragma mark - Explicit Per-User Access Methods
+#endif
 
 bool PFACL::setReadAccessForUser(bool allowed, PFUserPtr user)
 {
@@ -303,7 +315,9 @@ bool PFACL::writeAccessForUser(PFUserPtr user)
 	return false;
 }
 
+#ifdef __APPLE__
 #pragma mark - PFSerializable Methods
+#endif
 
 QVariant PFACL::fromJson(const QJsonObject &jsonObject)
 {

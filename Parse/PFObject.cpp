@@ -28,7 +28,9 @@ namespace parse {
 // Static Globals
 static QHash<PFObject *, PFObjectList> gActiveBackgroundObjects; // Used for save all, delete all and fetch all
 
+#ifdef __APPLE__
 #pragma mark - Memory Management Methods
+#endif
 
 PFObject::PFObject()
 {
@@ -52,7 +54,9 @@ PFObject::~PFObject()
 	qDebug().nospace() << "Destroyed PFObject(" << QString().sprintf("%8p", this) << ")";
 }
 
+#ifdef __APPLE__
 #pragma mark - Creation Methods
+#endif
 
 PFObjectPtr PFObject::objectWithClassName(const QString& className)
 {
@@ -118,7 +122,9 @@ PFObjectPtr PFObject::objectFromVariant(const QVariant& variant)
 	return PFObjectPtr();
 }
 
+#ifdef __APPLE__
 #pragma mark - Object Storage Methods
+#endif
 
 void PFObject::setObjectForKey(const QVariant& object, const QString& key)
 {
@@ -166,7 +172,9 @@ QStringList PFObject::allKeys()
 	return _properties.keys();
 }
 
+#ifdef __APPLE__
 #pragma mark - Increment Methods
+#endif
 
 void PFObject::incrementKey(const QString& key)
 {
@@ -220,7 +228,9 @@ void PFObject::incrementKeyByAmount(const QString& key, int amount)
 	}
 }
 
+#ifdef __APPLE__
 #pragma mark - List Add & Remove Methods
+#endif
 
 void PFObject::addObjectToListForKey(const QVariant& object, const QString& key)
 {
@@ -385,7 +395,9 @@ void PFObject::removeObjectsFromListForKey(const QVariantList& objects, const QS
 	}
 }
 
+#ifdef __APPLE__
 #pragma mark - ACL Accessor Methods
+#endif
 
 void PFObject::setACL(PFACLPtr acl)
 {
@@ -401,7 +413,9 @@ PFACLPtr PFObject::ACL()
 	return _acl;
 }
 
+#ifdef __APPLE__
 #pragma mark - Object Info Getter Methods
+#endif
 
 const QString PFObject::className()
 {
@@ -423,7 +437,9 @@ PFDateTimePtr PFObject::updatedAt()
 	return _updatedAt;
 }
 
+#ifdef __APPLE__
 #pragma mark - Save Methods
+#endif
 
 bool PFObject::save()
 {
@@ -509,7 +525,9 @@ bool PFObject::saveInBackground(QObject *target, const char *action)
 	return true;
 }
 
+#ifdef __APPLE__
 #pragma mark - Save All Methods
+#endif
 
 bool PFObject::saveAll(PFObjectList objects)
 {
@@ -601,7 +619,9 @@ bool PFObject::saveAllInBackground(PFObjectList objects, QObject *target, const 
 	return true;
 }
 
+#ifdef __APPLE__
 #pragma mark - Delete Object Methods
+#endif
 
 bool PFObject::deleteObject()
 {
@@ -672,7 +692,9 @@ bool PFObject::deleteObjectInBackground(QObject *target, const char *action)
 	return true;
 }
 
+#ifdef __APPLE__
 #pragma mark - Delete All Objects Methods
+#endif
 
 bool PFObject::deleteAllObjects(PFObjectList objects)
 {
@@ -764,7 +786,9 @@ bool PFObject::deleteAllObjectsInBackground(PFObjectList objects, QObject *targe
 	return true;
 }
 
+#ifdef __APPLE__
 #pragma mark - Data Availibility Methods
+#endif
 
 bool PFObject::isDataAvailable()
 {
@@ -774,7 +798,9 @@ bool PFObject::isDataAvailable()
 	return false;
 }
 
+#ifdef __APPLE__
 #pragma mark - Fetch Methods
+#endif
 
 bool PFObject::fetch()
 {
@@ -859,7 +885,9 @@ bool PFObject::fetchInBackground(QObject *target, const char *action)
 	return true;
 }
 
+#ifdef __APPLE__
 #pragma mark - Fetch All Methods
+#endif
 
 bool PFObject::fetchAll(PFObjectList objects)
 {
@@ -884,7 +912,9 @@ bool PFObject::fetchAll(PFObjectList objects, PFErrorPtr& error)
 	return allSucceeded;
 }
 
+#ifdef __APPLE__
 #pragma mark - Fetch If Needed Methods
+#endif
 
 bool PFObject::fetchIfNeeded()
 {
@@ -908,7 +938,9 @@ bool PFObject::fetchIfNeededInBackground(QObject *target, const char *action)
 		return fetchInBackground(target, action);
 }
 
+#ifdef __APPLE__
 #pragma mark - Fetch All If Needed Methods
+#endif
 
 bool PFObject::fetchAllIfNeeded(PFObjectList objects)
 {
@@ -933,7 +965,9 @@ bool PFObject::fetchAllIfNeeded(PFObjectList objects, PFErrorPtr& error)
 	return allSucceeded;
 }
 
+#ifdef __APPLE__
 #pragma mark - PFSerializable Methods
+#endif
 
 QVariant PFObject::fromJson(const QJsonObject& jsonObject)
 {
@@ -976,7 +1010,9 @@ const QString PFObject::pfClassName() const
 	return "PFObject";
 }
 
+#ifdef __APPLE__
 #pragma mark - Background Request Completion Signals
+#endif
 
 void PFObject::handleSaveCompleted(QNetworkReply* networkReply)
 {
@@ -1104,14 +1140,18 @@ void PFObject::handleFetchCompleted(QNetworkReply* networkReply)
 	networkReply->deleteLater();
 }
 
+#ifdef __APPLE__
 #pragma mark - Protected Methods
+#endif
 
 bool PFObject::needsUpdate()
 {
 	return !_objectId.isEmpty();
 }
 
+#ifdef __APPLE__
 #pragma mark - Network Request Builder Methods
+#endif
 
 void PFObject::createSaveNetworkRequest(QNetworkRequest& request, QByteArray& data)
 {
@@ -1263,7 +1303,9 @@ QNetworkRequest PFObject::createFetchNetworkRequest()
 	return request;
 }
 
+#ifdef __APPLE__
 #pragma mark - Network Reply Deserialization Methods
+#endif
 
 bool PFObject::deserializeSaveNetworkReply(QNetworkReply* networkReply, bool updated, PFErrorPtr& error)
 {
@@ -1471,7 +1513,9 @@ bool PFObject::deserializeFetchNetworkReply(QNetworkReply* networkReply, PFError
 	}
 }
 
+#ifdef __APPLE__
 #pragma mark - Instance Member Property Stripping Methods
+#endif
 
 void PFObject::stripInstanceMembersFromProperties()
 {

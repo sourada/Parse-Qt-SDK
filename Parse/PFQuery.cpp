@@ -25,7 +25,9 @@ namespace parse {
 
 #define PFUSER_QUERY_CLASSNAME		"__PFUSER_QUERY__"
 
+#ifdef __APPLE__
 #pragma mark - Memory Management Methods
+#endif
 
 PFQuery::PFQuery()
 {
@@ -46,7 +48,9 @@ PFQuery::~PFQuery()
 	qDebug().nospace() << "Destroyed PFQuery(" << QString().sprintf("%8p", this) << ")";
 }
 
+#ifdef __APPLE__
 #pragma mark - Creation Methods
+#endif
 
 PFQueryPtr PFQuery::queryWithClassName(const QString& className)
 {
@@ -63,7 +67,9 @@ PFQueryPtr PFQuery::queryWithClassName(const QString& className)
 	}
 }
 
+#ifdef __APPLE__
 #pragma mark - Key Inclusion/Exclusion
+#endif
 
 void PFQuery::includeKey(const QString& key)
 {
@@ -75,7 +81,9 @@ void PFQuery::selectKeys(const QStringList& keys)
 	_selectKeys |= keys.toSet();
 }
 
+#ifdef __APPLE__
 #pragma mark - Key Constraints - Object Comparisons
+#endif
 
 void PFQuery::whereKeyExists(const QString& key)
 {
@@ -118,7 +126,9 @@ void PFQuery::whereKeyGreaterThanOrEqualTo(const QString& key, const QVariant& o
 	addWhereOption(key, "$gte", object);
 }
 
+#ifdef __APPLE__
 #pragma mark - Key Constraints - List Comparisons
+#endif
 
 void PFQuery::whereKeyContainedIn(const QString& key, const QVariantList& objects)
 {
@@ -135,7 +145,9 @@ void PFQuery::whereKeyContainsAllObjects(const QString& key, const QVariantList&
 	addWhereOption(key, "$all", objects);
 }
 
+#ifdef __APPLE__
 #pragma mark - Sorting Methods
+#endif
 
 void PFQuery::orderByAscending(const QString& key)
 {
@@ -159,7 +171,9 @@ void PFQuery::addDescendingOrder(const QString& key)
 	_orderKeys.append(QString("-") + key);
 }
 
+#ifdef __APPLE__
 #pragma mark - Pagination Methods
+#endif
 
 void PFQuery::setLimit(int limit)
 {
@@ -181,7 +195,9 @@ int PFQuery::skip()
 	return _skip;
 }
 
+#ifdef __APPLE__
 #pragma mark - Get Object Methods
+#endif
 
 PFObjectPtr PFQuery::getObjectOfClassWithId(const QString& className, const QString& objectId)
 {
@@ -251,7 +267,10 @@ void PFQuery::getObjectWithIdInBackground(const QString& objectId, QObject* targ
 	QObject::connect(this, SIGNAL(getObjectCompleted(PFObjectPtr, PFErrorPtr)), target, action);
 }
 
+#ifdef __APPLE__
 #pragma mark - Get User Methods
+#endif
+
 PFUserPtr PFQuery::getUserWithId(const QString& objectId)
 {
 	PFErrorPtr error;
@@ -285,7 +304,9 @@ PFUserPtr PFQuery::getUserWithId(const QString& objectId, PFErrorPtr& error)
 	return user;
 }
 
+#ifdef __APPLE__
 #pragma mark - Find Objects Methods
+#endif
 
 PFObjectList PFQuery::findObjects()
 {
@@ -330,7 +351,9 @@ void PFQuery::findObjectsInBackground(QObject* target, const char* action)
 	QObject::connect(this, SIGNAL(findObjectsCompleted(PFObjectList, PFErrorPtr)), target, action);
 }
 
+#ifdef __APPLE__
 #pragma mark - Get First Object Methods
+#endif
 
 PFObjectPtr PFQuery::getFirstObject()
 {
@@ -375,7 +398,9 @@ void PFQuery::getFirstObjectInBackground(QObject* target, const char* action)
 	QObject::connect(this, SIGNAL(getFirstObjectCompleted(PFObjectPtr, PFErrorPtr)), target, action);
 }
 
+#ifdef __APPLE__
 #pragma mark - Count Objects Methods
+#endif
 
 int PFQuery::countObjects()
 {
@@ -420,7 +445,9 @@ void PFQuery::countObjectsInBackground(QObject* target, const char* action)
 	QObject::connect(this, SIGNAL(countObjectsCompleted(int, PFErrorPtr)), target, action);
 }
 
+#ifdef __APPLE__
 #pragma mark - Cancel Methods
+#endif
 
 void PFQuery::cancel()
 {
@@ -461,14 +488,18 @@ void PFQuery::cancel()
 	}
 }
 
+#ifdef __APPLE__
 #pragma mark - Accessor Methods
+#endif
 
 const QString& PFQuery::className()
 {
 	return _className;
 }
 
+#ifdef __APPLE__
 #pragma mark - Background Network Reply Completion Slots
+#endif
 
 void PFQuery::handleGetObjectCompleted()
 {
@@ -538,7 +569,9 @@ void PFQuery::handleCountObjectsCompleted()
 	_countReply->deleteLater();
 }
 
+#ifdef __APPLE__
 #pragma mark - Network Request Builder Methods
+#endif
 
 QNetworkRequest PFQuery::createGetObjectNetworkRequest()
 {
@@ -572,7 +605,9 @@ QNetworkRequest PFQuery::createCountObjectsNetworkRequest()
 	return buildDefaultNetworkRequest();
 }
 
+#ifdef __APPLE__
 #pragma mark - Network Reply Deserialization Methods
+#endif
 
 PFObjectPtr PFQuery::deserializeGetObjectNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error)
 {
@@ -692,7 +727,9 @@ int PFQuery::deserializeCountObjectsNetworkReply(QNetworkReply* networkReply, PF
 	return count;
 }
 
+#ifdef __APPLE__
 #pragma mark - Protected Helper Methods
+#endif
 
 void PFQuery::addWhereOption(const QString& key, const QString& option, const QVariant& object)
 {
