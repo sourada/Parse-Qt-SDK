@@ -2,7 +2,13 @@
 
 # Test suite
 ParseTestSuite/Debug
+ParseTestSuite/debug
 ParseTestSuite/Release
+ParseTestSuite/release
 ParseTestSuite/moc
 ParseTestSuite/*.build
 ParseTestSuite/*.xcodeproj
+ParseTestSuite/*.sln
+ParseTestSuite/*.vcx*
+ParseTestSuite/*.v11*
+ParseTestSuite/*.sdf
