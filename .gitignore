@@ -1,5 +1,12 @@
 .DS_Store
 
+# Build
+BuildParse/moc_*
+BuildParse/parse.build
+BuildParse/parse.xcodeproj
+BuildParse/Debug
+BuildParse/Release
+
 # Test suite
 ParseTestSuite/Debug
 ParseTestSuite/debug
