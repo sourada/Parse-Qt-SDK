@@ -446,6 +446,7 @@ bool PFFile::toJson(QJsonObject& jsonObject)
 	{
 		jsonObject["__type"] = QString("File");
 		jsonObject["name"] = _name;
+		jsonObject["url"] = _url;
 		return true;
 	}
 }
