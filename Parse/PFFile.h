@@ -65,6 +65,19 @@ public:
 						  QObject *saveCompleteTarget, const char *saveCompleteAction);
 
 	////////////////////////////////
+	//     Check File Methods
+	////////////////////////////////
+
+	// Checks the url synchronously to see if the data exists on the server
+	bool checkUrlForFile();
+
+	// Checks the url asynchronously to see if the data exists on the server
+	//   @param target The target to be notified when the check completes.
+	//   @param action The slot to be notified when the check completes - SLOT(checkUrlForFileCompleted(bool)).
+	//   @return True if the async check process was started, false otherwise.
+	bool checkUrlForFileInBackground(QObject *target, const char *action);
+
+	////////////////////////////////
 	//     Get Data Methods
 	////////////////////////////////
 
@@ -123,6 +136,9 @@ protected slots:
 	void handleSaveProgressUpdated(qint64 bytesSent, qint64 bytesTotal);
 	void handleSaveCompleted();
 
+	// Check Url for File Slots
+	void handleCheckUrlForFileCompleted();
+
 	// Get Data Slots
 	void handleGetDataReadyRead();
 	void handleGetDataProgressUpdated(qint64 bytesSent, qint64 bytesTotal);
@@ -136,6 +152,9 @@ signals:
 	// Save Signals
 	void saveProgressUpdated(double percentDone);
 	void saveCompleted(bool succeeded, PFErrorPtr error);
+
+	// Check Url Signals
+	void checkUrlForFileCompleted(bool succeeded);
 
 	// Get Data Signals
 	void getDataProgressUpdated(double percentDone);
@@ -152,10 +171,12 @@ protected:
 
 	// Network Request Builder Methods
 	QNetworkRequest createSaveNetworkRequest();
+	QNetworkRequest createCheckUrlForFileNetworkRequest();
 	QNetworkRequest createDeleteNetworkRequest();
 
 	// Network Reply Deserialization Methods
 	bool deserializeSaveNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
+	bool deserializeCheckUrlForFileNetworkReply(QNetworkReply* networkReply);
 	bool deserializeDeleteNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 
 	// Instance members
@@ -170,6 +191,7 @@ protected:
 	bool				_isDownloading;
 	bool				_isDeleting;
 	QNetworkReply*		_saveReply;
+	QNetworkReply*		_checkUrlReply;
 	QNetworkReply*		_getDataReply;
 	QNetworkReply*		_deleteReply;
 };

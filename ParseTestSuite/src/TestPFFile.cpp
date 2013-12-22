@@ -8,6 +8,7 @@
 
 #include "PFFile.h"
 #include "PFManager.h"
+#include "PFObject.h"
 #include "TestRunner.h"
 
 using namespace parse;
@@ -28,6 +29,12 @@ public slots:
 		_saveSucceeded = succeeded;
 		_saveError = error;
 		emit saveEnded();
+	}
+
+	void checkUrlForFileCompleted(bool succeeded)
+	{
+		_checkUrlForFileSucceeded = succeeded;
+		emit checkUrlForFileEnded();
 	}
 
 	void getDataProgressUpdated(double percentDone)
@@ -52,6 +59,7 @@ public slots:
 signals:
 
 	void saveEnded();
+	void checkUrlForFileEnded();
 	void getDataEnded();
 	void deleteEnded();
 
@@ -142,6 +150,10 @@ private slots:
 	void test_saveInBackground();
 	void test_saveInBackgroundWithProgress();
 
+	// Check Url for File Methods
+	void test_checkUrlForFile();
+	void test_checkUrlForFileInBackground();
+
 	// Get Data Methods
 	void test_isDataAvailable();
 	void test_getData();
@@ -174,6 +186,7 @@ private:
 	// Instance members for save and get data callbacks
 	bool			_saveSucceeded;
 	PFErrorPtr		_saveError;
+	bool			_checkUrlForFileSucceeded;
 	bool			_getDataSucceeded;
 	PFErrorPtr		_getDataError;
 	bool			_deleteSucceeded;
@@ -434,6 +447,79 @@ void TestPFFile::test_saveInBackgroundWithProgress()
 	// NOTE: Should fail b/c created with the fileWithNameAndUrl method (hints that it has already been saved)
 	bool succeeded = _nameUrlFile->saveInBackground(this, SLOT(saveProgressUpdated(double)), this, SLOT(saveCompleted(bool, PFErrorPtr)));
 	QCOMPARE(succeeded, false);
+}
+
+void TestPFFile::test_checkUrlForFile()
+{
+	// Create a couple different files
+	PFFilePtr dataFile = PFFile::fileWithNameAndData("data_file.txt", _data);
+	QString filename = "plain_text.txt";
+	QString plainTextFilepath = QDir(_dataPath).absoluteFilePath(filename);
+	PFFilePtr plainTextFile = PFFile::fileWithNameAndContentsAtPath("plain_text.txt", plainTextFilepath);
+
+	// Save them to the cloud
+	QCOMPARE(dataFile->save(), true);
+	QCOMPARE(dataFile->name().isEmpty(), false);
+	QCOMPARE(dataFile->url().isEmpty(), false);
+	QCOMPARE(plainTextFile->save(), true);
+	QCOMPARE(plainTextFile->name().isEmpty(), false);
+	QCOMPARE(plainTextFile->url().isEmpty(), false);
+
+	// Check the url to see if they exist in the cloud
+	QCOMPARE(dataFile->checkUrlForFile(), true);
+	QCOMPARE(plainTextFile->checkUrlForFile(), true);
+
+	// Delete them from the cloud
+	QCOMPARE(dataFile->deleteFile(), true);
+	QCOMPARE(plainTextFile->deleteFile(), true);
+
+	// Re-check the url to see if they exist in the cloud (should fail since we deleted them)
+	QCOMPARE(dataFile->checkUrlForFile(), false);
+	QCOMPARE(plainTextFile->checkUrlForFile(), false);
+}
+
+void TestPFFile::test_checkUrlForFileInBackground()
+{
+	// Use an event loop to block until we receive the completion
+	QEventLoop eventLoop;
+	QObject::connect(this, SIGNAL(checkUrlForFileEnded()), &eventLoop, SLOT(quit()));
+
+	// Create a couple different files
+	PFFilePtr dataFile = PFFile::fileWithNameAndData("data_file.txt", _data);
+	QString filename = "plain_text.txt";
+	QString plainTextFilepath = QDir(_dataPath).absoluteFilePath(filename);
+	PFFilePtr plainTextFile = PFFile::fileWithNameAndContentsAtPath("plain_text.txt", plainTextFilepath);
+
+	// Save them to the cloud
+	QCOMPARE(dataFile->save(), true);
+	QCOMPARE(dataFile->name().isEmpty(), false);
+	QCOMPARE(dataFile->url().isEmpty(), false);
+	QCOMPARE(plainTextFile->save(), true);
+	QCOMPARE(plainTextFile->name().isEmpty(), false);
+	QCOMPARE(plainTextFile->url().isEmpty(), false);
+
+	// Check the urls for each file to see if they exist in the cloud (they should at the moment)
+	dataFile->checkUrlForFileInBackground(this, SLOT(checkUrlForFileCompleted(bool)));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_checkUrlForFileSucceeded, true);
+	_checkUrlForFileSucceeded = false;
+	plainTextFile->checkUrlForFileInBackground(this, SLOT(checkUrlForFileCompleted(bool)));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_checkUrlForFileSucceeded, true);
+	_checkUrlForFileSucceeded = false;
+
+	// Delete the file from the cloud
+	QCOMPARE(dataFile->deleteFile(), true);
+	QCOMPARE(plainTextFile->deleteFile(), true);
+
+	// Re-check the urls for each file (they should no longer exist in the cloud)
+	dataFile->checkUrlForFileInBackground(this, SLOT(checkUrlForFileCompleted(bool)));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_checkUrlForFileSucceeded, false);
+	_checkUrlForFileSucceeded = false;
+	plainTextFile->checkUrlForFileInBackground(this, SLOT(checkUrlForFileCompleted(bool)));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_checkUrlForFileSucceeded, false);
 }
 
 void TestPFFile::test_isDataAvailable()

@@ -44,6 +44,7 @@ PFFile::PFFile()
 	_isDownloading = false;
 	_isDeleting = false;
 	_saveReply = NULL;
+	_checkUrlReply = NULL;
 	_getDataReply = NULL;
 	_deleteReply = NULL;
 }
@@ -309,6 +310,63 @@ bool PFFile::saveInBackground(QObject *saveProgressTarget, const char *saveProgr
 		QObject::connect(this, SIGNAL(saveProgressUpdated(double)), saveProgressTarget, saveProgressAction);
 	if (saveCompleteTarget)
 		QObject::connect(this, SIGNAL(saveCompleted(bool, PFErrorPtr)), saveCompleteTarget, saveCompleteAction);
+
+	return true;
+}
+
+#ifdef __APPLE__
+#pragma mark - Check Url for File Methods
+#endif
+
+bool PFFile::checkUrlForFile()
+{
+	// Early out if we don't have a url
+	if (_url.isEmpty())
+	{
+		qWarning().nospace() << "WARNING: PFFile \"" << _name << "\" does not have a url to check";
+		return false;
+	}
+
+	// Create a network request
+	QNetworkRequest request = createCheckUrlForFileNetworkRequest();
+
+	// Execute the request and connect the callbacks
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	QNetworkReply* networkReply = networkAccessManager->head(request);
+
+	// Block the async nature of the request using our own event loop until the reply finishes
+	QEventLoop eventLoop;
+	QObject::connect(networkReply, SIGNAL(finished()), &eventLoop, SLOT(quit()));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+
+	// Deserialize the reply
+	bool success = deserializeCheckUrlForFileNetworkReply(networkReply);
+
+	// Clean up
+	networkReply->deleteLater();
+
+	return success;
+}
+
+bool PFFile::checkUrlForFileInBackground(QObject *target, const char *action)
+{
+	// Early out if we don't have a url
+	if (_url.isEmpty())
+	{
+		qWarning().nospace() << "WARNING: PFFile \"" << _name << "\" does not have a url to check";
+		return false;
+	}
+
+	// Create a network request
+	QNetworkRequest request = createCheckUrlForFileNetworkRequest();
+
+	// Execute the request and connect the callbacks
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	_checkUrlReply = networkAccessManager->head(request);
+	QObject::connect(_checkUrlReply, SIGNAL(finished()), this, SLOT(handleCheckUrlForFileCompleted()));
+
+	// Connect the callbacks from this object to the target/action pair
+	QObject::connect(this, SIGNAL(checkUrlForFileCompleted(bool)), target, action);
 
 	return true;
 }
@@ -584,6 +642,23 @@ void PFFile::handleSaveCompleted()
 }
 
 #ifdef __APPLE__
+#pragma mark - Protected Check Url for File Slots
+#endif
+
+void PFFile::handleCheckUrlForFileCompleted()
+{
+	// Deserialize the reply
+	bool success = deserializeCheckUrlForFileNetworkReply(_checkUrlReply);
+
+	// Emit the signal that the check has completed and then disconnect it
+	emit checkUrlForFileCompleted(success);
+	this->disconnect(SIGNAL(checkUrlForFileCompleted(bool)));
+
+	// Clean up
+	_checkUrlReply->deleteLater();
+}
+
+#ifdef __APPLE__
 #pragma mark - Protected Get Data Slots
 #endif
 
@@ -677,6 +752,14 @@ QNetworkRequest PFFile::createSaveNetworkRequest()
 	return request;
 }
 
+QNetworkRequest PFFile::createCheckUrlForFileNetworkRequest()
+{
+	QUrl url = QUrl(_url);
+	QNetworkRequest request(url);
+
+	return request;
+}
+
 QNetworkRequest PFFile::createDeleteNetworkRequest()
 {
 	QUrl url = QUrl(QString("https://api.parse.com/1/files/") + _name);
@@ -713,6 +796,11 @@ bool PFFile::deserializeSaveNetworkReply(QNetworkReply* networkReply, PFErrorPtr
 
 		return false;
 	}
+}
+
+bool PFFile::deserializeCheckUrlForFileNetworkReply(QNetworkReply* networkReply)
+{
+	return (networkReply->error() == QNetworkReply::NoError);
 }
 
 bool PFFile::deserializeDeleteNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error)
