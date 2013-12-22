@@ -88,6 +88,20 @@ public:
 							 QObject *getDataCompleteTarget, const char *getDataCompleteAction);
 
 	////////////////////////////////
+	//       Delete Methods
+	////////////////////////////////
+
+	// Delete the data synchronously from the server
+	bool deleteFile();
+	bool deleteFile(PFErrorPtr& error);
+
+	// Deletes the file asynchronously from the server.
+	//   @param deleteCompleteTarget The target to be notified when the delete completes.
+	//   @param deleteCompleteAction The slot to be notified when the delete completes - SLOT(deleteCompleted(bool, PFErrorPtr)).
+	//   @return True if the async delete process was started, false otherwise.
+	bool deleteFileInBackground(QObject *target = 0, const char *action = 0);
+
+	////////////////////////////////
 	//       Cancellation
 	////////////////////////////////
 
@@ -114,6 +128,9 @@ protected slots:
 	void handleGetDataProgressUpdated(qint64 bytesSent, qint64 bytesTotal);
 	void handleGetDataCompleted();
 
+	// Delete Slots
+	void handleDeleteCompleted();
+
 signals:
 
 	// Save Signals
@@ -124,6 +141,9 @@ signals:
 	void getDataProgressUpdated(double percentDone);
 	void getDataCompleted(QByteArray* data, PFErrorPtr error);
 
+	// Delete Signals
+	void deleteCompleted(bool succeeded, PFErrorPtr error);
+
 protected:
 
 	// Constructor / Destructor
@@ -132,9 +152,11 @@ protected:
 
 	// Network Request Builder Methods
 	QNetworkRequest createSaveNetworkRequest();
+	QNetworkRequest createDeleteNetworkRequest();
 
 	// Network Reply Deserialization Methods
 	bool deserializeSaveNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
+	bool deserializeDeleteNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error);
 
 	// Instance members
 	QString				_filepath;
@@ -146,8 +168,10 @@ protected:
 	bool				_isDirty;
 	bool				_isUploading;
 	bool				_isDownloading;
+	bool				_isDeleting;
 	QNetworkReply*		_saveReply;
 	QNetworkReply*		_getDataReply;
+	QNetworkReply*		_deleteReply;
 };
 
 }	// End of parse namespace

@@ -42,10 +42,18 @@ public slots:
 		emit getDataEnded();
 	}
 
+	void deleteCompleted(bool succeeded, PFErrorPtr error)
+	{
+		_deleteSucceeded = succeeded;
+		_deleteError = error;
+		emit deleteEnded();
+	}
+
 signals:
 
 	void saveEnded();
 	void getDataEnded();
+	void deleteEnded();
 
 private slots:
 
@@ -98,6 +106,8 @@ private slots:
 		_saveError = PFErrorPtr();
 		_getDataSucceeded = false;
 		_getDataError = PFErrorPtr();
+		_deleteSucceeded = false;
+		_deleteError = PFErrorPtr();
 	}
 
 	void cleanup()
@@ -138,6 +148,11 @@ private slots:
 	void test_getDataInBackground();
 	void test_getDataInBackgroundWithProgress();
 
+	// Delete Methods
+	void test_delete();
+	void test_deleteWithError();
+	void test_deleteFileInBackground();
+
 	// Cancellation Methods
 	void test_cancel();
 
@@ -161,6 +176,8 @@ private:
 	PFErrorPtr		_saveError;
 	bool			_getDataSucceeded;
 	PFErrorPtr		_getDataError;
+	bool			_deleteSucceeded;
+	PFErrorPtr		_deleteError;
 };
 
 void TestPFFile::test_fileWithData()
@@ -529,6 +546,86 @@ void TestPFFile::test_getDataInBackgroundWithProgress()
 	QObject::connect(this, SIGNAL(getDataEnded()), &eventLoop, SLOT(quit()));
 	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
 	QCOMPARE(cloudFile->getData() != NULL, true);
+}
+
+void TestPFFile::test_delete()
+{
+	// Create a couple different files
+	PFFilePtr dataFile = PFFile::fileWithNameAndData("data_file.txt", _data);
+	QString filename = "plain_text.txt";
+	QString plainTextFilepath = QDir(_dataPath).absoluteFilePath(filename);
+	PFFilePtr plainTextFile = PFFile::fileWithNameAndContentsAtPath("plain_text.txt", plainTextFilepath);
+
+	// Save them to the cloud
+	QCOMPARE(dataFile->save(), true);
+	QCOMPARE(dataFile->name().isEmpty(), false);
+	QCOMPARE(dataFile->url().isEmpty(), false);
+	QCOMPARE(plainTextFile->save(), true);
+	QCOMPARE(plainTextFile->name().isEmpty(), false);
+	QCOMPARE(plainTextFile->url().isEmpty(), false);
+
+	// Delete them from the cloud
+	QCOMPARE(dataFile->deleteFile(), true);
+	QCOMPARE(plainTextFile->deleteFile(), true);
+}
+
+void TestPFFile::test_deleteWithError()
+{
+	// Create a couple different files
+	PFFilePtr dataFile = PFFile::fileWithNameAndData("data_file.txt", _data);
+	QString filename = "plain_text.txt";
+	QString plainTextFilepath = QDir(_dataPath).absoluteFilePath(filename);
+	PFFilePtr plainTextFile = PFFile::fileWithNameAndContentsAtPath("plain_text.txt", plainTextFilepath);
+
+	// Save them to the cloud
+	QCOMPARE(dataFile->save(), true);
+	QCOMPARE(dataFile->name().isEmpty(), false);
+	QCOMPARE(dataFile->url().isEmpty(), false);
+	QCOMPARE(plainTextFile->save(), true);
+	QCOMPARE(plainTextFile->name().isEmpty(), false);
+	QCOMPARE(plainTextFile->url().isEmpty(), false);
+
+	// Delete them from the cloud
+	PFErrorPtr deleteError;
+	QCOMPARE(dataFile->deleteFile(deleteError), true);
+	QCOMPARE(deleteError.isNull(), true);
+	QCOMPARE(plainTextFile->deleteFile(deleteError), true);
+	QCOMPARE(deleteError.isNull(), true);
+}
+
+void TestPFFile::test_deleteFileInBackground()
+{
+	// Use an event loop to block until we receive the completion
+	QEventLoop eventLoop;
+	QObject::connect(this, SIGNAL(deleteEnded()), &eventLoop, SLOT(quit()));
+
+	// Create a couple different files
+	PFFilePtr dataFile = PFFile::fileWithNameAndData("data_file.txt", _data);
+	QString filename = "plain_text.txt";
+	QString plainTextFilepath = QDir(_dataPath).absoluteFilePath(filename);
+	PFFilePtr plainTextFile = PFFile::fileWithNameAndContentsAtPath("plain_text.txt", plainTextFilepath);
+
+	// Save them to the cloud
+	QCOMPARE(dataFile->save(), true);
+	QCOMPARE(dataFile->name().isEmpty(), false);
+	QCOMPARE(dataFile->url().isEmpty(), false);
+	QCOMPARE(plainTextFile->save(), true);
+	QCOMPARE(plainTextFile->name().isEmpty(), false);
+	QCOMPARE(plainTextFile->url().isEmpty(), false);
+
+	// Delete the dataFile from the cloud
+	dataFile->deleteFileInBackground(this, SLOT(deleteCompleted(bool, PFErrorPtr)));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_deleteSucceeded, true);
+	QCOMPARE(_deleteError, PFErrorPtr());
+
+	// Delete the plainTextFile from the cloud
+	_deleteSucceeded = false;
+	_deleteError = PFErrorPtr();
+	plainTextFile->deleteFileInBackground(this, SLOT(deleteCompleted(bool, PFErrorPtr)));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+	QCOMPARE(_deleteSucceeded, true);
+	QCOMPARE(_deleteError, PFErrorPtr());
 }
 
 void TestPFFile::test_cancel()

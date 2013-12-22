@@ -42,8 +42,10 @@ PFFile::PFFile()
 	_isDirty = false;
 	_isUploading = false;
 	_isDownloading = false;
+	_isDeleting = false;
 	_saveReply = NULL;
 	_getDataReply = NULL;
+	_deleteReply = NULL;
 }
 
 PFFile::~PFFile()
@@ -392,6 +394,93 @@ bool PFFile::getDataInBackground(QObject *getDataProgressTarget, const char *get
 }
 
 #ifdef __APPLE__
+#pragma mark - Delete Methods
+#endif
+
+bool PFFile::deleteFile()
+{
+	PFErrorPtr error;
+	return deleteFile(error);
+}
+
+bool PFFile::deleteFile(PFErrorPtr& error)
+{
+	// Can't delete the file without the master key
+	if (PFManager::sharedManager()->masterKey().isEmpty())
+	{
+		qWarning().nospace() << "WARNING: PFFile \"" << _name << "\" cannot be deleted without setting the master key";
+		return false;
+	}
+
+	// Early out if the file is already deleting
+	if (_isDeleting)
+	{
+		qWarning().nospace() << "WARNING: PFFile \"" << _filepath << "\" is already being deleted";
+		return false;
+	}
+
+	// Update the ivar
+	_isDeleting = true;
+
+	// Create a network request
+	QNetworkRequest request = createDeleteNetworkRequest();
+
+	// Execute the request and connect the callbacks
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	QNetworkReply* networkReply = networkAccessManager->deleteResource(request);
+
+	// Block the async nature of the request using our own event loop until the reply finishes
+	QEventLoop eventLoop;
+	QObject::connect(networkReply, SIGNAL(finished()), &eventLoop, SLOT(quit()));
+	eventLoop.exec(QEventLoop::ExcludeUserInputEvents);
+
+	// Update our ivar
+	_isDeleting = false;
+
+	// Deserialize the reply
+	bool success = deserializeDeleteNetworkReply(networkReply, error);
+
+	// Clean up
+	networkReply->deleteLater();
+
+	return success;
+}
+
+bool PFFile::deleteFileInBackground(QObject *target, const char *action)
+{
+	// Can't delete the file without the master key
+	if (PFManager::sharedManager()->masterKey().isEmpty())
+	{
+		qWarning().nospace() << "WARNING: PFFile \"" << _name << "\" cannot be deleted without setting the master key";
+		return false;
+	}
+
+	// Early out if the file is already deleting
+	if (_isDeleting)
+	{
+		qWarning().nospace() << "WARNING: PFFile \"" << _filepath << "\" is already being deleted";
+		return false;
+	}
+
+	// Update the ivar
+	_isDeleting = true;
+
+	// Create a network request
+	QNetworkRequest request = createDeleteNetworkRequest();
+
+	// Execute the request and connect the callbacks
+	QNetworkAccessManager* networkAccessManager = PFManager::sharedManager()->networkAccessManager();
+	_deleteReply = networkAccessManager->deleteResource(request);
+	QObject::connect(_deleteReply, SIGNAL(finished()), this, SLOT(handleDeleteCompleted()));
+
+	// Connect the callbacks from this object to the target actions
+	if (target)
+		QObject::connect(this, SIGNAL(deleteCompleted(bool, PFErrorPtr)), target, action);
+
+	return true;
+}
+
+#ifdef __APPLE__
 #pragma mark - Cancellation Methods
 #endif
 
@@ -553,6 +642,27 @@ void PFFile::handleGetDataCompleted()
 }
 
 #ifdef __APPLE__
+#pragma mark - Protected Delete File Slots
+#endif
+
+void PFFile::handleDeleteCompleted()
+{
+	// Update our ivar
+	_isDeleting = false;
+
+	// Deserialize the reply
+	PFErrorPtr error;
+	bool success = deserializeDeleteNetworkReply(_deleteReply, error);
+
+	// Emit the signal that the delete has completed and then disconnect it
+	emit deleteCompleted(success, error);
+	this->disconnect(SIGNAL(deleteCompleted(bool, PFErrorPtr)));
+
+	// Clean up
+	_deleteReply->deleteLater();
+}
+
+#ifdef __APPLE__
 #pragma mark - Network Request Builder Methods
 #endif
 
@@ -563,6 +673,16 @@ QNetworkRequest PFFile::createSaveNetworkRequest()
 	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
 	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
 	request.setRawHeader(QString("Content-Type").toUtf8(), _mimeType.toUtf8());
+
+	return request;
+}
+
+QNetworkRequest PFFile::createDeleteNetworkRequest()
+{
+	QUrl url = QUrl(QString("https://api.parse.com/1/files/") + _name);
+	QNetworkRequest request(url);
+	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
+	request.setRawHeader(QString("X-Parse-Master-Key").toUtf8(), PFManager::sharedManager()->masterKey().toUtf8());
 
 	return request;
 }
@@ -593,6 +713,29 @@ bool PFFile::deserializeSaveNetworkReply(QNetworkReply* networkReply, PFErrorPtr
 
 		return false;
 	}
+}
+
+bool PFFile::deserializeDeleteNetworkReply(QNetworkReply* networkReply, PFErrorPtr& error)
+{
+	// Parse the json reply
+	QJsonDocument doc = QJsonDocument::fromJson(networkReply->readAll());
+	QJsonObject jsonObject = doc.object();
+
+	// Extract the JSON payload
+	if (networkReply->error() == QNetworkReply::NoError) // SUCCESS
+	{
+		return true;
+	}
+	else // FAILURE
+	{
+		int errorCode = jsonObject["code"].toInt();
+		QString errorMessage = jsonObject["error"].toString();
+		error = PFError::errorWithCodeAndMessage(errorCode, errorMessage);
+
+		return false;
+	}
+
+	return true;
 }
 
 }	// End of parse namespace
