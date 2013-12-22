@@ -25,6 +25,7 @@ static QMutex gPFManagerMutex;
 PFManager::PFManager() :
 	_applicationId(""),
 	_restApiKey(""),
+	_masterKey(""),
 	_cacheDirectory(""),
 	_networkAccessManager()
 {
@@ -61,6 +62,11 @@ void PFManager::setApplicationIdAndRestApiKey(const QString& applicationId, cons
 	_restApiKey = restApiKey;
 }
 
+void PFManager::setMasterKey(const QString& masterKey)
+{
+	_masterKey = masterKey;
+}
+
 const QString& PFManager::applicationId()
 {
 	return _applicationId;
@@ -69,6 +75,11 @@ const QString& PFManager::applicationId()
 const QString& PFManager::restApiKey()
 {
 	return _restApiKey;
+}
+
+const QString& PFManager::masterKey()
+{
+	return _masterKey;
 }
 
 #ifdef __APPLE__

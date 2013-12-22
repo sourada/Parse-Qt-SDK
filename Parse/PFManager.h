@@ -30,9 +30,13 @@ public:
 	// Sets the application id and rest api key
 	void setApplicationIdAndRestApiKey(const QString& applicationId, const QString& restApiKey);
 
+	// Sets the master key which is only necessary to delete files
+	void setMasterKey(const QString& masterKey);
+
 	// Application ID, Rest API Key Getter Methods
 	const QString& applicationId();
 	const QString& restApiKey();
+	const QString& masterKey();
 
 	//=================================================================================
 	//                                BACKEND API
@@ -53,6 +57,7 @@ protected:
 	// Instance members
 	QString					_applicationId;
 	QString					_restApiKey;
+	QString					_masterKey;
 	QDir					_cacheDirectory;
 	QNetworkAccessManager	_networkAccessManager;
 };
