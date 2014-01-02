@@ -41,6 +41,7 @@ public:
 
 		// Register the app id and rest api key
 		PFManager::sharedManager()->setApplicationIdAndRestApiKey(TestRunner::applicationId(), TestRunner::restApiKey());
+		PFManager::sharedManager()->setMasterKey(TestRunner::masterKey());
 
 		// Start up the tests once the application starts
 		QTimer::singleShot(100, this, SLOT(runAllTests()));
@@ -49,6 +50,7 @@ public:
 	// Replace these with your own!!!
 	static QString applicationId() { return ""; }
 	static QString restApiKey() { return ""; }
+	static QString masterKey() { return ""; }
 
 	static TestList& testList()
 	{
