@@ -1225,12 +1225,12 @@ void PFObject::createSaveAllNetworkRequest(PFObjectList objects, QNetworkRequest
 		if (updateRequired)
 		{
 			jsonRequest["method"] = QString("PUT");
-			jsonRequest["path"] = QString("/1/classes/") + object->className() + "/" + object->objectId();
+			jsonRequest["path"] = QString("/classes/") + object->className() + "/" + object->objectId();
 		}
 		else
 		{
 			jsonRequest["method"] = QString("POST");
-			jsonRequest["path"] = QString("/1/classes/") + object->className();
+			jsonRequest["path"] = QString("/classes/") + object->className();
 		}
 		jsonRequest["body"] = jsonObjectBody;
 
@@ -1277,7 +1277,7 @@ void PFObject::createDeleteAllObjectsNetworkRequest(PFObjectList objects, QNetwo
 		// Create the json request
 		QJsonObject jsonRequest;
 		jsonRequest["method"] = QString("DELETE");
-		jsonRequest["path"] = QString("/1/classes/") + object->className() + "/" + object->objectId();
+		jsonRequest["path"] = QString("/classes/") + object->className() + "/" + object->objectId();
 
 		// Add the json request to the array
 		jsonRequestArray.append(jsonRequest);
