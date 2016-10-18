@@ -480,7 +480,7 @@ void PFUser::handleRequestPasswordResetReply(QNetworkReply* networkReply)
 void PFUser::createSignUpNetworkRequest(QNetworkRequest& request, QByteArray& data)
 {
 	// Create a network request
-	request = QNetworkRequest(QUrl("https://api.parse.com/1/users"));
+	request = QNetworkRequest(QUrl(QString(ParseRootURL) + "users"));
 	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
 	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
 	request.setRawHeader(QString("Content-Type").toUtf8(), QString("application/json").toUtf8());
@@ -505,7 +505,7 @@ void PFUser::createSignUpNetworkRequest(QNetworkRequest& request, QByteArray& da
 QNetworkRequest PFUser::createLogInNetworkRequest()
 {
 	// Create the url string
-	QUrlQuery urlQuery = QUrlQuery("https://api.parse.com/1/login?");
+	QUrlQuery urlQuery = QUrlQuery(QString(ParseRootURL) + "login?");
 	urlQuery.addQueryItem("username", gLogInUser->_username);
 	urlQuery.addQueryItem("password", gLogInUser->_password);
 	QUrl url = QUrl(urlQuery.query());
@@ -521,7 +521,7 @@ QNetworkRequest PFUser::createLogInNetworkRequest()
 void PFUser::createPasswordResetNetworkRequest(QNetworkRequest& request, QByteArray& data)
 {
 	// Create a network request
-	request = QNetworkRequest(QUrl("https://api.parse.com/1/requestPasswordReset"));
+	request = QNetworkRequest(QUrl(QString(ParseRootURL) + "/requestPasswordReset"));
 	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
 	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
 	request.setRawHeader(QString("Content-Type").toUtf8(), QString("application/json").toUtf8());
@@ -545,7 +545,7 @@ void PFUser::createSaveNetworkRequest(QNetworkRequest& request, QByteArray& data
 	else
 	{
 		// Create the request to use for saving the user
-		QUrl url = QUrl(QString("https://api.parse.com/1/users/") + _objectId);
+		QUrl url = QUrl(QString(ParseRootURL) + "users/" + _objectId);
 		request = QNetworkRequest(url);
 		request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
 		request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
@@ -560,7 +560,7 @@ void PFUser::createSaveNetworkRequest(QNetworkRequest& request, QByteArray& data
 
 QNetworkRequest PFUser::createDeleteObjectNetworkRequest()
 {
-	QUrl url = QUrl(QString("https://api.parse.com/1/users/") + _objectId);
+	QUrl url = QUrl(QString(ParseRootURL) + "users/" + _objectId);
 	QNetworkRequest request(url);
 	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
 	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
@@ -574,7 +574,7 @@ QNetworkRequest PFUser::createDeleteObjectNetworkRequest()
 
 QNetworkRequest PFUser::createFetchNetworkRequest()
 {
-	QUrl url = QUrl(QString("https://api.parse.com/1/users/") + _objectId);
+	QUrl url = QUrl(QString(ParseRootURL) + "users/" + _objectId);
 	QNetworkRequest request(url);
 	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
 	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());

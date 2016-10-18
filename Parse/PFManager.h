@@ -14,6 +14,8 @@
 #include <QNetworkAccessManager>
 #include <QString>
 
+extern char *ParseRootURL;
+
 namespace parse {
 
 class PFManager : public QObject

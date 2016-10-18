@@ -1157,7 +1157,7 @@ void PFObject::createSaveNetworkRequest(QNetworkRequest& request, QByteArray& da
 {
 	// Create the url based on whether we should create or update the PFObject
 	bool updateRequired = needsUpdate();
-	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _className);
+	QUrl url = QUrl(QString(ParseRootURL) + "classes/" + _className);
 	if (updateRequired)
 		url = QUrl(url.toString() + "/" + _objectId);
 
@@ -1191,7 +1191,7 @@ void PFObject::createSaveNetworkRequest(QNetworkRequest& request, QByteArray& da
 void PFObject::createSaveAllNetworkRequest(PFObjectList objects, QNetworkRequest& request, QByteArray& data)
 {
 	// Create a network request
-	request = QNetworkRequest(QString("https://api.parse.com/1/batch"));
+	request = QNetworkRequest(QString(ParseRootURL) + "batch");
 	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
 	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
 	request.setRawHeader(QString("Content-Type").toUtf8(), QString("application/json").toUtf8());
@@ -1246,7 +1246,7 @@ void PFObject::createSaveAllNetworkRequest(PFObjectList objects, QNetworkRequest
 
 QNetworkRequest PFObject::createDeleteObjectNetworkRequest()
 {
-	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _className + "/" + _objectId);
+	QUrl url = QUrl(QString(ParseRootURL) + "classes/" + _className + "/" + _objectId);
 	QNetworkRequest request(url);
 	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
 	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
@@ -1261,7 +1261,7 @@ QNetworkRequest PFObject::createDeleteObjectNetworkRequest()
 void PFObject::createDeleteAllObjectsNetworkRequest(PFObjectList objects, QNetworkRequest& request, QByteArray& data)
 {
 	// Create a network request
-	request = QNetworkRequest(QString("https://api.parse.com/1/batch"));
+	request = QNetworkRequest(QString(ParseRootURL) + "batch");
 	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
 	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
 	request.setRawHeader(QString("Content-Type").toUtf8(), QString("application/json").toUtf8());
@@ -1291,7 +1291,7 @@ void PFObject::createDeleteAllObjectsNetworkRequest(PFObjectList objects, QNetwo
 
 QNetworkRequest PFObject::createFetchNetworkRequest()
 {
-	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _className + "/" + _objectId);
+	QUrl url = QUrl(QString(ParseRootURL) + "classes/" + _className + "/" + _objectId);
 	QNetworkRequest request(url);
 	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
 	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());

@@ -13,6 +13,9 @@
 #include <QMutex>
 #include <QMutexLocker>
 
+char *ParseRootURL = "https://parseapi.back4app.com/";
+//char *ParseRootURL = "http://macp:1337/parse/";
+
 namespace parse {
 
 // Static Globals

@@ -751,9 +751,9 @@ void PFQuery::addWhereOption(const QString& key, const QString& option, const QV
 QNetworkRequest PFQuery::buildDefaultNetworkRequest()
 {
 	// Create the url
-	QUrl url = QUrl(QString("https://api.parse.com/1/classes/") + _className);
+	QUrl url = QUrl(QString(ParseRootURL) + "classes/" + _className);
 	if (_className == PFUSER_QUERY_CLASSNAME)
-		url = QUrl(QString("https://api.parse.com/1/users"));
+		url = QUrl(QString(ParseRootURL) + "users");
 
 	// Create the url query
 	QUrlQuery urlQuery;

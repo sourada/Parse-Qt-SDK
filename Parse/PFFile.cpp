@@ -743,7 +743,7 @@ void PFFile::handleDeleteCompleted()
 
 QNetworkRequest PFFile::createSaveNetworkRequest()
 {
-	QUrl url = QUrl(QString("https://api.parse.com/1/files/") + _name);
+	QUrl url = QUrl(QString(ParseRootURL) + "files/" + _name);
 	QNetworkRequest request(url);
 	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
 	request.setRawHeader(QString("X-Parse-REST-API-Key").toUtf8(), PFManager::sharedManager()->restApiKey().toUtf8());
@@ -762,7 +762,7 @@ QNetworkRequest PFFile::createCheckUrlForFileNetworkRequest()
 
 QNetworkRequest PFFile::createDeleteNetworkRequest()
 {
-	QUrl url = QUrl(QString("https://api.parse.com/1/files/") + _name);
+	QUrl url = QUrl(QString(ParseRootURL) + "files/" + _name);
 	QNetworkRequest request(url);
 	request.setRawHeader(QString("X-Parse-Application-Id").toUtf8(), PFManager::sharedManager()->applicationId().toUtf8());
 	request.setRawHeader(QString("X-Parse-Master-Key").toUtf8(), PFManager::sharedManager()->masterKey().toUtf8());
