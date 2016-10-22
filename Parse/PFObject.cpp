@@ -1225,12 +1225,12 @@ void PFObject::createSaveAllNetworkRequest(PFObjectList objects, QNetworkRequest
 		if (updateRequired)
 		{
 			jsonRequest["method"] = QString("PUT");
-			jsonRequest["path"] = QString("/classes/") + object->className() + "/" + object->objectId();
+			jsonRequest["path"] = QString(ParseRootURLPrefix) + "classes/" + object->className() + "/" + object->objectId();
 		}
 		else
 		{
 			jsonRequest["method"] = QString("POST");
-			jsonRequest["path"] = QString("/classes/") + object->className();
+			jsonRequest["path"] = QString(ParseRootURLPrefix) + "classes/" + object->className();
 		}
 		jsonRequest["body"] = jsonObjectBody;
 

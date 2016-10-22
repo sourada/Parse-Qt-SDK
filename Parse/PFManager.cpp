@@ -14,6 +14,7 @@
 #include <QMutexLocker>
 
 char *ParseRootURL = "https://parseapi.back4app.com/";
+char *ParseRootURLPrefix = "";
 
 namespace parse {
 

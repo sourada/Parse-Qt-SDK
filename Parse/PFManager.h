@@ -15,6 +15,7 @@
 #include <QString>
 
 extern char *ParseRootURL;
+extern char *ParseRootURLPrefix;
 
 namespace parse {
 
